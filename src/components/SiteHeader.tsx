@@ -30,7 +30,11 @@ const SiteHeader = () => {
                 key={item.path}
                 to={item.path}
                 className={`px-3 py-1.5 brutalist-border transition-colors ${
-                  location.pathname === item.path
+                  item.path === '/'
+                    ? location.pathname === '/'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-secondary'
+                    : location.pathname.startsWith(item.path)
                     ? 'bg-primary text-primary-foreground'
                     : 'hover:bg-secondary'
                 }`}
