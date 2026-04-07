@@ -4,7 +4,7 @@ const SiteFooter = () => {
       <div className="container py-6 font-mono text-xs text-muted-foreground">
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
           <div>
-            CH·INTEL — Open-source Swiss civic intelligence.
+            POLI·GRAPH — Global Civic Intelligence Platform.
             <br />
             No endorsements. No recommendations. Evidence only.
           </div>
