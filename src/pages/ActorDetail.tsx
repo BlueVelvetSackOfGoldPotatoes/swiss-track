@@ -1,7 +1,8 @@
 import { useParams, Link } from 'react-router-dom';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
-import { mockActors } from '@/data/mockData';
+import ActorTimeline from '@/components/ActorTimeline';
+import { mockActors, getCountry, getActorEvents, relationships, parties } from '@/data/mockData';
 
 const ActorDetail = () => {
   const { id } = useParams();
@@ -13,78 +14,137 @@ const ActorDetail = () => {
         <SiteHeader />
         <main className="container flex-1 py-8">
           <p className="font-mono text-sm text-muted-foreground">Actor not found.</p>
-          <Link to="/actors" className="text-accent underline text-sm mt-2 inline-block">
-            ← Back to actors
-          </Link>
+          <Link to="/actors" className="text-accent underline text-sm mt-2 inline-block">← Back to actors</Link>
         </main>
         <SiteFooter />
       </div>
     );
   }
 
+  const country = getCountry(actor.countryId);
+  const events = getActorEvents(actor.id);
+  const actorParty = parties.find(p => p.id === actor.partyId);
+  const actorRelationships = relationships.filter(r =>
+    (r.sourceId === actor.id && r.sourceType === 'actor') ||
+    (r.targetId === actor.id && r.targetType === 'actor')
+  );
+
+  const yearsInOffice = actor.inOfficeSince
+    ? Math.floor((Date.now() - new Date(actor.inOfficeSince).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    : null;
+
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
-      <main className="container flex-1 py-8 max-w-3xl">
-        <Link to="/actors" className="text-accent underline text-xs font-mono mb-4 inline-block">
-          ← ACTORS
-        </Link>
+      <main className="container flex-1 py-8 max-w-4xl">
+        <Link to="/actors" className="text-accent underline text-xs font-mono mb-4 inline-block">← ACTORS</Link>
 
+        {/* Header */}
         <div className="brutalist-border-b pb-4 mb-6">
-          <div className="flex gap-2 mb-2">
-            <span className="evidence-tag">{actor.jurisdiction.slice(0, 3).toUpperCase()}</span>
+          <div className="flex gap-2 mb-2 flex-wrap">
+            <span className="evidence-tag">{country?.code || 'N/A'}</span>
             <span className="evidence-tag">{actor.party}</span>
+            <span className="evidence-tag">{actor.jurisdiction.toUpperCase()}</span>
             <span className="evidence-tag">{actor.canton}</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight">{actor.name}</h1>
-          <p className="text-sm font-mono text-muted-foreground">{actor.role}</p>
+          <p className="text-sm font-mono text-muted-foreground">{actor.role} · {country?.name}</p>
         </div>
 
-        {/* Committees */}
-        <section className="mb-6">
-          <h2 className="text-xs font-mono font-bold text-muted-foreground mb-2">COMMITTEE MEMBERSHIPS</h2>
-          <div className="space-y-1">
-            {actor.committees.map((c) => (
-              <div key={c} className="font-mono text-sm brutalist-border px-3 py-1.5 bg-secondary">
-                {c}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
+          {/* Main column */}
+          <div>
+            {/* Stats bar */}
+            <div className="brutalist-border p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-secondary">
+              <div>
+                <div className="font-mono text-xs text-muted-foreground">IN OFFICE</div>
+                <div className="font-mono text-lg font-bold">{yearsInOffice ?? '?'}y</div>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Recent votes */}
-        <section className="mb-6">
-          <h2 className="text-xs font-mono font-bold text-muted-foreground mb-2">RECENT VOTES</h2>
-          <div className="brutalist-border">
-            <div className="grid grid-cols-[100px_1fr_80px] font-mono text-xs font-bold bg-secondary px-3 py-2 brutalist-border-b">
-              <span>DATE</span>
-              <span>PROPOSAL</span>
-              <span className="text-right">VOTE</span>
+              <div>
+                <div className="font-mono text-xs text-muted-foreground">VOTES TRACKED</div>
+                <div className="font-mono text-lg font-bold">{actor.recentVotes.length}</div>
+              </div>
+              <div>
+                <div className="font-mono text-xs text-muted-foreground">COMMITTEES</div>
+                <div className="font-mono text-lg font-bold">{actor.committees.length}</div>
+              </div>
+              <div>
+                <div className="font-mono text-xs text-muted-foreground">EVENTS</div>
+                <div className="font-mono text-lg font-bold">{events.length}</div>
+              </div>
             </div>
-            {actor.recentVotes.map((v, i) => (
-              <div
-                key={i}
-                className="grid grid-cols-[100px_1fr_80px] font-mono text-xs px-3 py-2 table-row-alt brutalist-border-b last:border-b-0"
-              >
-                <span className="text-muted-foreground">{v.date}</span>
-                <span>{v.proposal}</span>
-                <span className={`text-right font-bold ${
-                  v.vote === 'yes' ? 'text-success' : v.vote === 'no' ? 'text-destructive' : 'text-muted-foreground'
-                }`}>
-                  {v.vote.toUpperCase()}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
 
-        {/* Revision info */}
-        <section className="brutalist-border-t pt-4 mt-8">
-          <div className="font-mono text-xs text-muted-foreground flex flex-wrap gap-4">
-            <span>revision: {actor.revisionId}</span>
-            <span>updated: {new Date(actor.updatedAt).toLocaleDateString('de-CH')}</span>
+            {/* Git-like provenance timeline */}
+            <section className="mb-8">
+              <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                <span className="inline-block w-3 h-3 rounded-full bg-primary" />
+                PROVENANCE LOG
+              </h2>
+              <ActorTimeline events={events} />
+            </section>
           </div>
-        </section>
+
+          {/* Sidebar */}
+          <aside className="space-y-6">
+            {/* Party info */}
+            {actorParty && (
+              <div className="brutalist-border p-4">
+                <h3 className="font-mono text-xs font-bold mb-2">PARTY</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: actorParty.color }} />
+                  <span className="font-mono text-sm font-bold">{actorParty.abbreviation}</span>
+                </div>
+                <p className="font-mono text-xs text-muted-foreground">{actorParty.name}</p>
+                <p className="font-mono text-xs text-muted-foreground mt-1">{actorParty.ideology}</p>
+                <p className="font-mono text-xs text-muted-foreground mt-1">Founded {actorParty.foundedYear}</p>
+              </div>
+            )}
+
+            {/* Committees */}
+            <div className="brutalist-border p-4">
+              <h3 className="font-mono text-xs font-bold mb-2">COMMITTEES</h3>
+              <div className="space-y-1">
+                {actor.committees.map((c) => (
+                  <div key={c} className="font-mono text-xs bg-secondary px-2 py-1.5 brutalist-border">{c}</div>
+                ))}
+              </div>
+            </div>
+
+            {/* Relationships */}
+            {actorRelationships.length > 0 && (
+              <div className="brutalist-border p-4">
+                <h3 className="font-mono text-xs font-bold mb-2">CONNECTIONS</h3>
+                <div className="space-y-2">
+                  {actorRelationships.map(rel => {
+                    const otherId = rel.sourceId === actor.id ? rel.targetId : rel.sourceId;
+                    const other = mockActors.find(a => a.id === otherId);
+                    return (
+                      <div key={rel.id} className="brutalist-border-b pb-2 last:border-b-0">
+                        {other && (
+                          <Link to={`/actors/${other.id}`} className="font-mono text-xs font-bold hover:underline">
+                            {other.name}
+                          </Link>
+                        )}
+                        <div className="font-mono text-xs text-muted-foreground">
+                          {rel.type.replace(/_/g, ' ')} · strength {Math.round(rel.strength * 100)}%
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{rel.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Revision */}
+            <div className="font-mono text-xs text-muted-foreground space-y-1">
+              <div>rev: {actor.revisionId}</div>
+              <div>updated: {new Date(actor.updatedAt).toLocaleDateString()}</div>
+              {actor.birthYear && <div>born: {actor.birthYear}</div>}
+              {actor.inOfficeSince && <div>in office since: {new Date(actor.inOfficeSince).toLocaleDateString()}</div>}
+            </div>
+          </aside>
+        </div>
       </main>
       <SiteFooter />
     </div>

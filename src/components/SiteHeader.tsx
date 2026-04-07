@@ -2,9 +2,11 @@ import { Link, useLocation } from 'react-router-dom';
 
 const navItems = [
   { path: '/', label: 'CHANGELOG' },
-  { path: '/proposals', label: 'PROPOSALS' },
+  { path: '/explore', label: 'EXPLORE' },
   { path: '/actors', label: 'ACTORS' },
-  { path: '/about', label: 'METHODOLOGY' },
+  { path: '/proposals', label: 'PROPOSALS' },
+  { path: '/relationships', label: 'GRAPH' },
+  { path: '/about', label: 'ABOUT' },
 ];
 
 const SiteHeader = () => {
@@ -17,14 +19,14 @@ const SiteHeader = () => {
           <div>
             <Link to="/" className="block">
               <h1 className="text-2xl font-extrabold tracking-tighter leading-none">
-                CH·INTEL
+                POLI·GRAPH
               </h1>
               <p className="text-xs font-mono text-muted-foreground mt-0.5">
-                Swiss Civic Intelligence · Open Source
+                Global Civic Intelligence · Open Source
               </p>
             </Link>
           </div>
-          <nav className="flex gap-0 font-mono text-xs">
+          <nav className="flex gap-0 font-mono text-xs flex-wrap">
             {navItems.map((item) => (
               <Link
                 key={item.path}

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import { mockProposals, mockActors } from '@/data/mockData';
+import { mockProposals, mockActors, countries } from '@/data/mockData';
 
 interface SearchResult {
-  type: 'proposal' | 'actor';
+  type: 'proposal' | 'actor' | 'country';
   id: string;
   label: string;
   detail: string;
@@ -22,20 +22,24 @@ const SearchBar = () => {
     const lower = q.toLowerCase();
     const matched: SearchResult[] = [
       ...mockProposals
-        .filter(p => p.title.toLowerCase().includes(lower) || p.officialTitle.toLowerCase().includes(lower) || p.summary.toLowerCase().includes(lower))
+        .filter(p => p.title.toLowerCase().includes(lower) || p.officialTitle.toLowerCase().includes(lower))
         .map(p => ({ type: 'proposal' as const, id: p.id, label: p.title, detail: p.status.toUpperCase() })),
       ...mockActors
         .filter(a => a.name.toLowerCase().includes(lower) || a.party.toLowerCase().includes(lower) || a.canton.toLowerCase().includes(lower))
-        .map(a => ({ type: 'actor' as const, id: a.id, label: a.name, detail: `${a.party} · ${a.canton}` })),
+        .map(a => ({ type: 'actor' as const, id: a.id, label: a.name, detail: `${a.party} · ${countries.find(c => c.id === a.countryId)?.code || ''}` })),
+      ...countries
+        .filter(c => c.name.toLowerCase().includes(lower) || c.code.toLowerCase().includes(lower))
+        .map(c => ({ type: 'country' as const, id: c.id, label: c.name, detail: c.code })),
     ];
     setResults(matched);
     setOpen(matched.length > 0);
   };
 
   const go = (r: SearchResult) => {
-    setOpen(false);
-    setQuery('');
-    navigate(`/${r.type === 'proposal' ? 'proposals' : 'actors'}/${r.id}`);
+    setOpen(false); setQuery('');
+    if (r.type === 'proposal') navigate(`/proposals/${r.id}`);
+    else if (r.type === 'actor') navigate(`/actors/${r.id}`);
+    else navigate(`/country/${r.id}`);
   };
 
   return (
@@ -50,7 +54,7 @@ const SearchBar = () => {
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder="Search actors, proposals, laws, cantons..."
+          placeholder="Search actors, proposals, countries..."
           className="flex-1 px-3 py-2.5 bg-transparent text-sm font-mono placeholder:text-muted-foreground focus:outline-none"
         />
         {query && (
@@ -63,12 +67,14 @@ const SearchBar = () => {
         <div className="absolute z-50 left-0 right-0 mt-0 brutalist-border border-t-0 bg-background max-h-64 overflow-y-auto">
           {results.map((r) => (
             <button
-              key={r.id}
+              key={`${r.type}-${r.id}`}
               onMouseDown={() => go(r)}
               className="w-full text-left px-4 py-2.5 hover:bg-secondary flex items-center justify-between font-mono text-sm brutalist-border-b last:border-b-0"
             >
               <span>
-                <span className="text-xs text-muted-foreground mr-2">{r.type === 'proposal' ? 'PROP' : 'ACTOR'}</span>
+                <span className="text-xs text-muted-foreground mr-2">
+                  {r.type === 'proposal' ? 'PROP' : r.type === 'actor' ? 'ACTOR' : 'COUNTRY'}
+                </span>
                 {r.label}
               </span>
               <span className="text-xs text-muted-foreground">{r.detail}</span>
