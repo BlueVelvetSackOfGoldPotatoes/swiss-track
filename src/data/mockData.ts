@@ -9,7 +9,7 @@ export interface Continent {
 export interface Country {
   id: string;
   name: string;
-  code: string; // ISO 3166-1 alpha-2
+  code: string;
   continentId: string;
 }
 
@@ -23,14 +23,39 @@ export interface City {
 export interface ActorEvent {
   id: string;
   actorId: string;
-  hash: string; // git-like short hash
+  hash: string;
   timestamp: string;
-  type: 'vote' | 'speech' | 'committee_join' | 'committee_leave' | 'election' | 'appointment' | 'resignation' | 'scandal' | 'policy_change' | 'party_switch' | 'legislation_sponsored' | 'foreign_meeting';
+  type:
+    | 'vote'
+    | 'speech'
+    | 'committee_join'
+    | 'committee_leave'
+    | 'election'
+    | 'appointment'
+    | 'resignation'
+    | 'scandal'
+    | 'policy_change'
+    | 'party_switch'
+    | 'legislation_sponsored'
+    | 'foreign_meeting'
+    | 'lobbying_meeting'
+    | 'corporate_event'
+    | 'financial_disclosure'
+    | 'social_media'
+    | 'travel'
+    | 'donation_received'
+    | 'public_statement'
+    | 'court_case'
+    | 'media_appearance';
   title: string;
   description: string;
   diff?: { removed?: string; added?: string };
   evidenceCount: number;
   sourceUrl?: string;
+  source?: 'twitter' | 'official_record' | 'news' | 'financial_filing' | 'parliamentary_record' | 'court_filing' | 'lobby_register';
+  sourceHandle?: string; // e.g. @username for twitter
+  sentiment?: 'positive' | 'negative' | 'neutral';
+  entities?: string[]; // companies, people, orgs mentioned
 }
 
 export interface Relationship {
@@ -39,8 +64,8 @@ export interface Relationship {
   sourceType: 'actor' | 'party';
   targetId: string;
   targetType: 'actor' | 'party';
-  type: 'coalition' | 'opposition' | 'mentor' | 'ally' | 'rival' | 'ideological_alignment' | 'committee_co_member' | 'cross_border_alliance';
-  strength: number; // 0-1
+  type: 'coalition' | 'opposition' | 'mentor' | 'ally' | 'rival' | 'ideological_alignment' | 'committee_co_member' | 'cross_border_alliance' | 'lobbying' | 'corporate_board' | 'donor';
+  strength: number;
   description: string;
   since?: string;
 }
@@ -53,7 +78,7 @@ export interface Party {
   ideology: string;
   color: string;
   foundedYear: number;
-  familyId: string; // ideological family grouping
+  familyId: string;
 }
 
 export interface ChangeLogEntry {
@@ -75,7 +100,7 @@ export interface Actor {
   name: string;
   partyId: string;
   party: string;
-  canton: string; // kept for backward compat, now means city/region
+  canton: string;
   cityId: string;
   countryId: string;
   role: string;
@@ -87,6 +112,9 @@ export interface Actor {
   photoUrl?: string;
   birthYear?: number;
   inOfficeSince?: string;
+  twitterHandle?: string;
+  netWorth?: string;
+  topDonors?: string[];
 }
 
 export interface Proposal {
@@ -177,6 +205,7 @@ export const mockActors: Actor[] = [
       { date: '2026-03-15', proposal: 'Energiegesetz Revision', vote: 'no' },
       { date: '2026-03-12', proposal: 'Armeebotschaft 2026', vote: 'abstain' },
     ], revisionId: 'rev-j0k1l2', updatedAt: '2026-04-02T16:40:00Z', birthYear: 1978, inOfficeSince: '2019-12-02',
+    twitterHandle: '@MSchneiderSP', topDonors: ['Unia Trade Union', 'SP Zürich'],
   },
   {
     id: 'actor-002', name: 'Thomas Müller', partyId: 'party-fdp', party: 'FDP', canton: 'Bern',
@@ -185,6 +214,7 @@ export const mockActors: Actor[] = [
       { date: '2026-03-20', proposal: 'Steuerreform 2026', vote: 'yes' },
       { date: '2026-03-18', proposal: 'BVG-Reform', vote: 'no' },
     ], revisionId: 'rev-s9t0u1', updatedAt: '2026-04-01T09:00:00Z', birthYear: 1965, inOfficeSince: '2015-11-30',
+    twitterHandle: '@TMuellerFDP', topDonors: ['Economiesuisse', 'Credit Suisse PAC'],
   },
   {
     id: 'actor-003', name: 'Friedrich Weber', partyId: 'party-cdu', party: 'CDU', canton: 'Berlin',
@@ -193,6 +223,7 @@ export const mockActors: Actor[] = [
       { date: '2026-03-10', proposal: 'Energy Transition Act', vote: 'yes' },
       { date: '2026-02-28', proposal: 'Digital Infrastructure Bill', vote: 'yes' },
     ], revisionId: 'rev-de001', updatedAt: '2026-04-01T10:00:00Z', birthYear: 1972, inOfficeSince: '2017-10-24',
+    twitterHandle: '@FWeberCDU', topDonors: ['Siemens AG', 'Deutsche Bank'],
   },
   {
     id: 'actor-004', name: 'Sarah Mitchell', partyId: 'party-dem', party: 'DEM', canton: 'Washington D.C.',
@@ -202,6 +233,7 @@ export const mockActors: Actor[] = [
       { date: '2026-03-15', proposal: 'AI Governance Framework', vote: 'yes' },
       { date: '2026-03-01', proposal: 'Defense Budget 2027', vote: 'no' },
     ], revisionId: 'rev-us001', updatedAt: '2026-04-03T08:00:00Z', birthYear: 1980, inOfficeSince: '2021-01-03',
+    twitterHandle: '@SenMitchell', topDonors: ['ActBlue', 'Google LLC', 'Microsoft Corp'],
   },
   {
     id: 'actor-005', name: 'James Crawford', partyId: 'party-gop', party: 'GOP', canton: 'New York',
@@ -210,6 +242,7 @@ export const mockActors: Actor[] = [
       { date: '2026-03-22', proposal: 'Infrastructure Renewal Act', vote: 'no' },
       { date: '2026-03-01', proposal: 'Defense Budget 2027', vote: 'yes' },
     ], revisionId: 'rev-us002', updatedAt: '2026-04-02T12:00:00Z', birthYear: 1968, inOfficeSince: '2019-01-03',
+    twitterHandle: '@RepCrawford', topDonors: ['Koch Industries', 'NRA', 'Lockheed Martin'],
   },
   {
     id: 'actor-006', name: 'Luísa Ferreira', partyId: 'party-pt', party: 'PT', canton: 'São Paulo',
@@ -218,6 +251,7 @@ export const mockActors: Actor[] = [
       { date: '2026-03-18', proposal: 'Universal Education Reform', vote: 'yes' },
       { date: '2026-03-05', proposal: 'Amazon Protection Act', vote: 'yes' },
     ], revisionId: 'rev-br001', updatedAt: '2026-04-01T14:00:00Z', birthYear: 1985, inOfficeSince: '2023-02-01',
+    twitterHandle: '@LuisaFerreira', topDonors: ['CUT Brasil', 'MST'],
   },
   {
     id: 'actor-007', name: 'Takeshi Yamamoto', partyId: 'party-ldp', party: 'LDP', canton: 'Tokyo',
@@ -226,6 +260,7 @@ export const mockActors: Actor[] = [
       { date: '2026-03-20', proposal: 'Defense Modernization Bill', vote: 'yes' },
       { date: '2026-03-12', proposal: 'Digital Economy Act', vote: 'yes' },
     ], revisionId: 'rev-jp001', updatedAt: '2026-04-02T06:00:00Z', birthYear: 1970, inOfficeSince: '2012-12-16',
+    twitterHandle: '@TYamamotoLDP', topDonors: ['Toyota Motor Corp', 'Keidanren'],
   },
   {
     id: 'actor-008', name: 'Claire Dupont', partyId: 'party-lrem', party: 'RE', canton: 'Paris',
@@ -234,38 +269,96 @@ export const mockActors: Actor[] = [
       { date: '2026-03-19', proposal: 'Pension Reform Amendment', vote: 'yes' },
       { date: '2026-03-10', proposal: 'Climate Adaptation Act', vote: 'yes' },
     ], revisionId: 'rev-fr001', updatedAt: '2026-04-03T09:00:00Z', birthYear: 1982, inOfficeSince: '2022-06-19',
+    twitterHandle: '@CDupontRE', topDonors: ['LVMH', 'TotalEnergies'],
   },
 ];
 
 // ==================== ACTOR EVENTS (GIT-LIKE HISTORY) ====================
 
 export const actorEvents: ActorEvent[] = [
-  // Maria Schneider events
-  { id: 'ev-001', actorId: 'actor-001', hash: 'a3f7c2', timestamp: '2026-04-02T16:40:00Z', type: 'vote', title: 'Correction: GPK membership date', description: 'Committee membership start date corrected from 2024 to 2025.', diff: { removed: 'GPK member since 2024', added: 'GPK member since 2025' }, evidenceCount: 3 },
-  { id: 'ev-002', actorId: 'actor-001', hash: 'b8e1d4', timestamp: '2026-03-18T14:00:00Z', type: 'vote', title: 'Voted YES on BVG-Reform', description: 'Supported pension reform bill in National Council plenary session.', evidenceCount: 5 },
-  { id: 'ev-003', actorId: 'actor-001', hash: 'c9f2e5', timestamp: '2026-03-15T11:00:00Z', type: 'vote', title: 'Voted NO on Energiegesetz Revision', description: 'Opposed energy law revision citing insufficient renewable targets.', evidenceCount: 2 },
-  { id: 'ev-004', actorId: 'actor-001', hash: 'd0a3f6', timestamp: '2026-03-12T10:00:00Z', type: 'vote', title: 'ABSTAINED on Armeebotschaft 2026', description: 'Abstained on military spending bill.', evidenceCount: 1 },
-  { id: 'ev-005', actorId: 'actor-001', hash: 'e1b4g7', timestamp: '2025-12-02T09:00:00Z', type: 'committee_join', title: 'Joined SGK committee', description: 'Appointed to Commission for Social Security and Health.', evidenceCount: 2 },
-  { id: 'ev-006', actorId: 'actor-001', hash: 'f2c5h8', timestamp: '2025-01-15T09:00:00Z', type: 'committee_join', title: 'Joined GPK committee', description: 'Appointed to Control Committee.', evidenceCount: 2 },
-  { id: 'ev-007', actorId: 'actor-001', hash: 'g3d6i9', timestamp: '2024-06-14T09:00:00Z', type: 'legislation_sponsored', title: 'Sponsored climate protection motion', description: 'Filed motion 24.3456 for enhanced CO₂ reduction targets.', evidenceCount: 4 },
-  { id: 'ev-008', actorId: 'actor-001', hash: 'h4e7j0', timestamp: '2019-12-02T10:00:00Z', type: 'election', title: 'Elected to National Council', description: 'Won seat in 2019 federal elections for SP, Canton Zürich.', evidenceCount: 8 },
+  // ===== Maria Schneider (actor-001) =====
+  { id: 'ev-001', actorId: 'actor-001', hash: 'a3f7c2', timestamp: '2026-04-02T16:40:00Z', type: 'vote', title: 'Correction: GPK membership date', description: 'Committee membership start date corrected from 2024 to 2025.', diff: { removed: 'GPK member since 2024', added: 'GPK member since 2025' }, evidenceCount: 3, source: 'parliamentary_record' },
+  { id: 'ev-002', actorId: 'actor-001', hash: 'b8e1d4', timestamp: '2026-03-18T14:00:00Z', type: 'vote', title: 'Voted YES on BVG-Reform', description: 'Supported pension reform bill in National Council plenary session.', evidenceCount: 5, source: 'parliamentary_record' },
+  { id: 'ev-003', actorId: 'actor-001', hash: 'c9f2e5', timestamp: '2026-03-15T11:00:00Z', type: 'vote', title: 'Voted NO on Energiegesetz Revision', description: 'Opposed energy law revision citing insufficient renewable targets.', evidenceCount: 2, source: 'parliamentary_record' },
+  { id: 'ev-050', actorId: 'actor-001', hash: 'x1a2b3', timestamp: '2026-03-14T19:22:00Z', type: 'social_media', title: 'Tweet: "Corporate lobbying must be transparent"', description: '"Just left meeting w/ pharma reps. We need full lobby transparency NOW. Citizens deserve to know who\'s influencing policy. #Transparency #SwissPolitics"', evidenceCount: 1, source: 'twitter', sourceHandle: '@MSchneiderSP', sentiment: 'negative', entities: ['Pharma industry'] },
+  { id: 'ev-004', actorId: 'actor-001', hash: 'd0a3f6', timestamp: '2026-03-12T10:00:00Z', type: 'vote', title: 'ABSTAINED on Armeebotschaft 2026', description: 'Abstained on military spending bill.', evidenceCount: 1, source: 'parliamentary_record' },
+  { id: 'ev-051', actorId: 'actor-001', hash: 'x2b3c4', timestamp: '2026-03-10T10:00:00Z', type: 'lobbying_meeting', title: 'Meeting with Novartis representatives', description: 'Registered lobby meeting with Novartis AG policy team re: drug pricing regulation.', evidenceCount: 2, source: 'lobby_register', entities: ['Novartis AG'] },
+  { id: 'ev-052', actorId: 'actor-001', hash: 'x3c4d5', timestamp: '2026-02-28T08:30:00Z', type: 'financial_disclosure', title: 'Annual financial disclosure filed', description: 'Declared CHF 245,000 income from parliamentary role. No side-board positions.', evidenceCount: 1, source: 'financial_filing', diff: { removed: 'Net income: CHF 238,000', added: 'Net income: CHF 245,000' } },
+  { id: 'ev-053', actorId: 'actor-001', hash: 'x4d5e6', timestamp: '2026-02-15T14:00:00Z', type: 'media_appearance', title: 'SRF Arena: Healthcare debate', description: 'Appeared on SRF Arena debating healthcare costs with FDP and SVP representatives.', evidenceCount: 3, source: 'news', entities: ['SRF Arena', 'FDP', 'SVP'] },
+  { id: 'ev-005', actorId: 'actor-001', hash: 'e1b4g7', timestamp: '2025-12-02T09:00:00Z', type: 'committee_join', title: 'Joined SGK committee', description: 'Appointed to Commission for Social Security and Health.', evidenceCount: 2, source: 'parliamentary_record' },
+  { id: 'ev-054', actorId: 'actor-001', hash: 'x5e6f7', timestamp: '2025-11-20T16:00:00Z', type: 'travel', title: 'Official trip to Brussels', description: 'Parliamentary delegation visit to EU institutions. Met with EU Health Commissioner.', evidenceCount: 2, source: 'official_record', entities: ['EU Commission', 'EU Health Commissioner'] },
+  { id: 'ev-055', actorId: 'actor-001', hash: 'x6f7g8', timestamp: '2025-10-05T12:00:00Z', type: 'social_media', title: 'Tweet thread on housing crisis', description: '"🧵 Zürich\'s housing crisis in 5 charts. Rents up 34% since 2015. Corporate landlords buying up entire blocks. Time for action. #Wohnungsnot"', evidenceCount: 1, source: 'twitter', sourceHandle: '@MSchneiderSP', sentiment: 'negative', entities: ['Real estate industry'] },
+  { id: 'ev-006', actorId: 'actor-001', hash: 'f2c5h8', timestamp: '2025-01-15T09:00:00Z', type: 'committee_join', title: 'Joined GPK committee', description: 'Appointed to Control Committee.', evidenceCount: 2, source: 'parliamentary_record' },
+  { id: 'ev-007', actorId: 'actor-001', hash: 'g3d6i9', timestamp: '2024-06-14T09:00:00Z', type: 'legislation_sponsored', title: 'Sponsored climate protection motion', description: 'Filed motion 24.3456 for enhanced CO₂ reduction targets.', evidenceCount: 4, source: 'parliamentary_record' },
+  { id: 'ev-008', actorId: 'actor-001', hash: 'h4e7j0', timestamp: '2019-12-02T10:00:00Z', type: 'election', title: 'Elected to National Council', description: 'Won seat in 2019 federal elections for SP, Canton Zürich.', evidenceCount: 8, source: 'official_record' },
 
-  // Sarah Mitchell events
-  { id: 'ev-020', actorId: 'actor-004', hash: 'k7h0m3', timestamp: '2026-03-22T16:00:00Z', type: 'vote', title: 'Voted YES on Infrastructure Renewal Act', description: 'Supported bipartisan infrastructure bill in Senate floor vote.', evidenceCount: 12 },
-  { id: 'ev-021', actorId: 'actor-004', hash: 'l8i1n4', timestamp: '2026-03-15T14:00:00Z', type: 'vote', title: 'Voted YES on AI Governance Framework', description: 'Co-sponsored and voted for landmark AI regulation bill.', evidenceCount: 18 },
-  { id: 'ev-022', actorId: 'actor-004', hash: 'm9j2o5', timestamp: '2026-03-01T11:00:00Z', type: 'vote', title: 'Voted NO on Defense Budget 2027', description: 'Opposed military spending increase, citing domestic priorities.', evidenceCount: 7 },
-  { id: 'ev-023', actorId: 'actor-004', hash: 'n0k3p6', timestamp: '2026-02-10T10:00:00Z', type: 'speech', title: 'Senate floor speech on AI ethics', description: 'Delivered 45-minute address on responsible AI development.', evidenceCount: 3 },
-  { id: 'ev-024', actorId: 'actor-004', hash: 'o1l4q7', timestamp: '2025-11-15T09:00:00Z', type: 'foreign_meeting', title: 'Met with EU Digital Commissioner', description: 'Bilateral meeting in Brussels on transatlantic AI standards.', evidenceCount: 5 },
-  { id: 'ev-025', actorId: 'actor-004', hash: 'p2m5r8', timestamp: '2025-06-01T09:00:00Z', type: 'committee_join', title: 'Joined Judiciary Committee', description: 'Appointed to Senate Judiciary Committee.', evidenceCount: 2 },
-  { id: 'ev-026', actorId: 'actor-004', hash: 'q3n6s9', timestamp: '2021-01-03T12:00:00Z', type: 'election', title: 'Sworn in as Senator', description: 'Took oath of office after winning 2020 Senate race.', evidenceCount: 15 },
+  // ===== Sarah Mitchell (actor-004) =====
+  { id: 'ev-020', actorId: 'actor-004', hash: 'k7h0m3', timestamp: '2026-03-22T16:00:00Z', type: 'vote', title: 'Voted YES on Infrastructure Renewal Act', description: 'Supported bipartisan infrastructure bill in Senate floor vote.', evidenceCount: 12, source: 'parliamentary_record' },
+  { id: 'ev-060', actorId: 'actor-004', hash: 'y1a2b3', timestamp: '2026-03-20T20:15:00Z', type: 'social_media', title: 'Tweet: Infrastructure bill passes', description: '"Today we passed the Infrastructure Renewal Act with bipartisan support. Roads, bridges, broadband for every American. This is what governing looks like. 🇺🇸"', evidenceCount: 1, source: 'twitter', sourceHandle: '@SenMitchell', sentiment: 'positive' },
+  { id: 'ev-061', actorId: 'actor-004', hash: 'y2b3c4', timestamp: '2026-03-18T10:00:00Z', type: 'lobbying_meeting', title: 'Meeting with Google Public Policy team', description: 'Scheduled lobby meeting with Google\'s VP of Public Policy. Topic: AI safety regulation impact on innovation.', evidenceCount: 3, source: 'lobby_register', entities: ['Google LLC', 'Alphabet Inc'] },
+  { id: 'ev-062', actorId: 'actor-004', hash: 'y3c4d5', timestamp: '2026-03-17T14:00:00Z', type: 'corporate_event', title: 'Attended TechForward Summit (keynote)', description: 'Keynote speaker at TechForward Summit. Event sponsored by Microsoft, Meta, and OpenAI.', evidenceCount: 5, source: 'news', entities: ['Microsoft', 'Meta', 'OpenAI', 'TechForward Summit'] },
+  { id: 'ev-021', actorId: 'actor-004', hash: 'l8i1n4', timestamp: '2026-03-15T14:00:00Z', type: 'vote', title: 'Voted YES on AI Governance Framework', description: 'Co-sponsored and voted for landmark AI regulation bill.', evidenceCount: 18, source: 'parliamentary_record' },
+  { id: 'ev-063', actorId: 'actor-004', hash: 'y4d5e6', timestamp: '2026-03-12T09:00:00Z', type: 'donation_received', title: '$50,000 from Google LLC PAC', description: 'Campaign finance filing shows $50,000 contribution from Google LLC PAC for 2026 cycle.', evidenceCount: 2, source: 'financial_filing', entities: ['Google LLC'], sentiment: 'neutral' },
+  { id: 'ev-064', actorId: 'actor-004', hash: 'y5e6f7', timestamp: '2026-03-08T19:00:00Z', type: 'social_media', title: 'Tweet: Called out oil lobby', description: '"Big Oil spent $124M lobbying Congress last year. They don\'t want climate action. We do. Follow the money. #ClimateAction"', evidenceCount: 1, source: 'twitter', sourceHandle: '@SenMitchell', sentiment: 'negative', entities: ['Oil & Gas industry'] },
+  { id: 'ev-022', actorId: 'actor-004', hash: 'm9j2o5', timestamp: '2026-03-01T11:00:00Z', type: 'vote', title: 'Voted NO on Defense Budget 2027', description: 'Opposed military spending increase, citing domestic priorities.', evidenceCount: 7, source: 'parliamentary_record' },
+  { id: 'ev-065', actorId: 'actor-004', hash: 'y6f7g8', timestamp: '2026-02-20T15:30:00Z', type: 'financial_disclosure', title: 'Annual financial disclosure 2025', description: 'Disclosed $3.2M net worth. Holdings include index funds, no individual tech stocks.', evidenceCount: 1, source: 'financial_filing', diff: { removed: 'Net worth: $2.8M', added: 'Net worth: $3.2M' } },
+  { id: 'ev-023', actorId: 'actor-004', hash: 'n0k3p6', timestamp: '2026-02-10T10:00:00Z', type: 'speech', title: 'Senate floor speech on AI ethics', description: 'Delivered 45-minute address on responsible AI development.', evidenceCount: 3, source: 'parliamentary_record' },
+  { id: 'ev-066', actorId: 'actor-004', hash: 'y7g8h9', timestamp: '2026-01-15T10:00:00Z', type: 'lobbying_meeting', title: 'Meeting with Lockheed Martin lobbyists', description: 'Registered meeting with Lockheed Martin government affairs. Topic: defense contract oversight.', evidenceCount: 2, source: 'lobby_register', entities: ['Lockheed Martin'] },
+  { id: 'ev-024', actorId: 'actor-004', hash: 'o1l4q7', timestamp: '2025-11-15T09:00:00Z', type: 'foreign_meeting', title: 'Met with EU Digital Commissioner', description: 'Bilateral meeting in Brussels on transatlantic AI standards.', evidenceCount: 5, source: 'official_record', entities: ['EU Commission'] },
+  { id: 'ev-067', actorId: 'actor-004', hash: 'y8h9i0', timestamp: '2025-09-20T16:00:00Z', type: 'travel', title: 'Congressional delegation to Taiwan', description: 'Part of 5-member Senate delegation. Met with President and tech industry leaders.', evidenceCount: 8, source: 'official_record', entities: ['Taiwan', 'TSMC'] },
+  { id: 'ev-025', actorId: 'actor-004', hash: 'p2m5r8', timestamp: '2025-06-01T09:00:00Z', type: 'committee_join', title: 'Joined Judiciary Committee', description: 'Appointed to Senate Judiciary Committee.', evidenceCount: 2, source: 'parliamentary_record' },
+  { id: 'ev-068', actorId: 'actor-004', hash: 'y9i0j1', timestamp: '2025-03-01T12:00:00Z', type: 'social_media', title: 'Retweeted criticism of pharma pricing', description: 'RT @PatientRights: "Americans pay 3x more for insulin than Canadians. @SenMitchell is one of few senators fighting to change this."', evidenceCount: 1, source: 'twitter', sourceHandle: '@SenMitchell', entities: ['Pharmaceutical industry'] },
+  { id: 'ev-026', actorId: 'actor-004', hash: 'q3n6s9', timestamp: '2021-01-03T12:00:00Z', type: 'election', title: 'Sworn in as Senator', description: 'Took oath of office after winning 2020 Senate race.', evidenceCount: 15, source: 'official_record' },
 
-  // Friedrich Weber events
-  { id: 'ev-030', actorId: 'actor-003', hash: 'r4o7t0', timestamp: '2026-03-10T14:00:00Z', type: 'vote', title: 'Voted YES on Energy Transition Act', description: 'Supported landmark German energy transition legislation.', evidenceCount: 8 },
-  { id: 'ev-031', actorId: 'actor-003', hash: 's5p8u1', timestamp: '2025-09-20T10:00:00Z', type: 'party_switch', title: 'Considered leaving CDU', description: 'Reports surfaced of disagreements with party leadership on climate policy. Ultimately remained.', diff: { removed: 'Full CDU alignment', added: 'CDU member with public dissent on climate' }, evidenceCount: 6 },
+  // ===== Friedrich Weber (actor-003) =====
+  { id: 'ev-030', actorId: 'actor-003', hash: 'r4o7t0', timestamp: '2026-03-10T14:00:00Z', type: 'vote', title: 'Voted YES on Energy Transition Act', description: 'Supported landmark German energy transition legislation.', evidenceCount: 8, source: 'parliamentary_record' },
+  { id: 'ev-070', actorId: 'actor-003', hash: 'z1a2b3', timestamp: '2026-03-05T18:00:00Z', type: 'social_media', title: 'Tweet: Energy transition vote', description: '"Voted for #Energiewende today. Germany must lead on climate. But we also need nuclear back on the table. Controversial? Yes. Necessary? Absolutely."', evidenceCount: 1, source: 'twitter', sourceHandle: '@FWeberCDU', sentiment: 'neutral', entities: ['Nuclear energy industry'] },
+  { id: 'ev-071', actorId: 'actor-003', hash: 'z2b3c4', timestamp: '2026-02-20T10:00:00Z', type: 'lobbying_meeting', title: 'Meeting with Siemens Energy leadership', description: 'Private meeting with Siemens Energy CEO. Topic: hydrogen infrastructure investment.', evidenceCount: 3, source: 'lobby_register', entities: ['Siemens Energy'] },
+  { id: 'ev-072', actorId: 'actor-003', hash: 'z3c4d5', timestamp: '2026-02-10T14:00:00Z', type: 'corporate_event', title: 'Munich Security Conference panel', description: 'Panelist on "Energy Security in a Multipolar World" at MSC. Shared stage with Shell CEO.', evidenceCount: 4, source: 'news', entities: ['Munich Security Conference', 'Shell plc'] },
+  { id: 'ev-073', actorId: 'actor-003', hash: 'z4d5e6', timestamp: '2026-01-15T12:00:00Z', type: 'financial_disclosure', title: 'Nebeneinkünfte disclosure Q4 2025', description: 'Declared €18,500 in speaking fees from industry events. Board seat at Deutsche Telekom advisory council.', evidenceCount: 2, source: 'financial_filing', entities: ['Deutsche Telekom'], diff: { removed: 'No board positions', added: 'Advisory board: Deutsche Telekom' } },
+  { id: 'ev-031', actorId: 'actor-003', hash: 's5p8u1', timestamp: '2025-09-20T10:00:00Z', type: 'party_switch', title: 'Considered leaving CDU', description: 'Reports surfaced of disagreements with party leadership on climate policy. Ultimately remained.', diff: { removed: 'Full CDU alignment', added: 'CDU member with public dissent on climate' }, evidenceCount: 6, source: 'news' },
+  { id: 'ev-074', actorId: 'actor-003', hash: 'z5e6f7', timestamp: '2025-07-01T09:00:00Z', type: 'donation_received', title: '€25,000 from Siemens AG employees', description: 'Bundestag records show accumulated donations from Siemens AG employees and PAC.', evidenceCount: 2, source: 'financial_filing', entities: ['Siemens AG'] },
 
-  // Luísa Ferreira events
-  { id: 'ev-040', actorId: 'actor-006', hash: 't6q9v2', timestamp: '2026-03-18T15:00:00Z', type: 'vote', title: 'Voted YES on Universal Education Reform', description: 'Supported expansion of public education funding.', evidenceCount: 4 },
-  { id: 'ev-041', actorId: 'actor-006', hash: 'u7r0w3', timestamp: '2026-03-05T11:00:00Z', type: 'legislation_sponsored', title: 'Sponsored Amazon Protection Act', description: 'Primary sponsor of environmental protection legislation for Amazon region.', evidenceCount: 9 },
+  // ===== James Crawford (actor-005) =====
+  { id: 'ev-080', actorId: 'actor-005', hash: 'w1a2b3', timestamp: '2026-03-25T21:00:00Z', type: 'social_media', title: 'Tweet: "Woke AI regulations kill jobs"', description: '"Democrats want to regulate AI into the ground. The AI Governance Framework is a job killer. We should be LEADING, not regulating. America First! 🇺🇸"', evidenceCount: 1, source: 'twitter', sourceHandle: '@RepCrawford', sentiment: 'negative', entities: ['AI Governance Framework'] },
+  { id: 'ev-081', actorId: 'actor-005', hash: 'w2b3c4', timestamp: '2026-03-22T16:00:00Z', type: 'vote', title: 'Voted NO on Infrastructure Renewal Act', description: 'Opposed spending bill citing fiscal concerns.', evidenceCount: 4, source: 'parliamentary_record' },
+  { id: 'ev-082', actorId: 'actor-005', hash: 'w3c4d5', timestamp: '2026-03-15T11:00:00Z', type: 'lobbying_meeting', title: 'NRA leadership briefing', description: 'Private briefing with NRA executive VP on Second Amendment legislation.', evidenceCount: 2, source: 'lobby_register', entities: ['NRA'] },
+  { id: 'ev-083', actorId: 'actor-005', hash: 'w4d5e6', timestamp: '2026-03-10T10:00:00Z', type: 'corporate_event', title: 'Koch Industries donor retreat', description: 'Attended Koch Industries annual donor/policy retreat in Palm Springs.', evidenceCount: 6, source: 'news', entities: ['Koch Industries'] },
+  { id: 'ev-084', actorId: 'actor-005', hash: 'w5e6f7', timestamp: '2026-03-01T16:00:00Z', type: 'vote', title: 'Voted YES on Defense Budget 2027', description: 'Supported $886B defense spending bill.', evidenceCount: 3, source: 'parliamentary_record' },
+  { id: 'ev-085', actorId: 'actor-005', hash: 'w6f7g8', timestamp: '2026-02-15T14:00:00Z', type: 'donation_received', title: '$75,000 from defense contractors', description: 'FEC filings show $75,000 in contributions from Lockheed Martin, Raytheon, and Boeing PACs.', evidenceCount: 3, source: 'financial_filing', entities: ['Lockheed Martin', 'Raytheon', 'Boeing'] },
+  { id: 'ev-086', actorId: 'actor-005', hash: 'w7g8h9', timestamp: '2026-01-20T20:00:00Z', type: 'social_media', title: 'Tweet: Dinner with Elon Musk', description: '"Great dinner with @elonmusk tonight. Discussed deregulation and American innovation. The future is bright! 🚀"', evidenceCount: 1, source: 'twitter', sourceHandle: '@RepCrawford', sentiment: 'positive', entities: ['Elon Musk', 'Tesla'] },
+  { id: 'ev-087', actorId: 'actor-005', hash: 'w8h9i0', timestamp: '2025-11-01T09:00:00Z', type: 'financial_disclosure', title: 'Annual financial disclosure 2025', description: 'Disclosed $8.5M net worth. Holdings include Raytheon, Lockheed Martin stock.', evidenceCount: 1, source: 'financial_filing', diff: { removed: 'Net worth: $7.2M', added: 'Net worth: $8.5M' }, entities: ['Raytheon', 'Lockheed Martin'] },
+
+  // ===== Luísa Ferreira (actor-006) =====
+  { id: 'ev-040', actorId: 'actor-006', hash: 't6q9v2', timestamp: '2026-03-18T15:00:00Z', type: 'vote', title: 'Voted YES on Universal Education Reform', description: 'Supported expansion of public education funding.', evidenceCount: 4, source: 'parliamentary_record' },
+  { id: 'ev-090', actorId: 'actor-006', hash: 'v1a2b3', timestamp: '2026-03-16T22:00:00Z', type: 'social_media', title: 'Tweet: Amazon deforestation data', description: '"BREAKING: Satellite data shows 23% increase in illegal deforestation in Pará. Mining companies are destroying our lungs. Thread 🧵👇 #SaveTheAmazon"', evidenceCount: 1, source: 'twitter', sourceHandle: '@LuisaFerreira', sentiment: 'negative', entities: ['Mining industry', 'Pará'] },
+  { id: 'ev-041', actorId: 'actor-006', hash: 'u7r0w3', timestamp: '2026-03-05T11:00:00Z', type: 'legislation_sponsored', title: 'Sponsored Amazon Protection Act', description: 'Primary sponsor of environmental protection legislation for Amazon region.', evidenceCount: 9, source: 'parliamentary_record' },
+  { id: 'ev-091', actorId: 'actor-006', hash: 'v2b3c4', timestamp: '2026-02-25T10:00:00Z', type: 'lobbying_meeting', title: 'Meeting with Vale SA representatives', description: 'Confrontational meeting with Vale mining company lobbyists regarding deforestation.', evidenceCount: 3, source: 'lobby_register', entities: ['Vale SA'], sentiment: 'negative' },
+  { id: 'ev-092', actorId: 'actor-006', hash: 'v3c4d5', timestamp: '2026-02-01T18:00:00Z', type: 'public_statement', title: 'Accused mining lobby of corruption', description: 'Press conference accusing mining lobby of bribing 12 congressmen. Named specific companies.', evidenceCount: 7, source: 'news', entities: ['Vale SA', 'Anglo American'], sentiment: 'negative' },
+
+  // ===== Takeshi Yamamoto (actor-007) =====
+  { id: 'ev-100', actorId: 'actor-007', hash: 'u1a2b3', timestamp: '2026-03-20T14:00:00Z', type: 'vote', title: 'Voted YES on Defense Modernization Bill', description: 'Supported increased defense spending amid regional tensions.', evidenceCount: 5, source: 'parliamentary_record' },
+  { id: 'ev-101', actorId: 'actor-007', hash: 'u2b3c4', timestamp: '2026-03-15T10:00:00Z', type: 'corporate_event', title: 'Toyota annual reception', description: 'Attended Toyota\'s annual Diet members reception. 45 LDP members present.', evidenceCount: 3, source: 'news', entities: ['Toyota Motor Corp'] },
+  { id: 'ev-102', actorId: 'actor-007', hash: 'u3c4d5', timestamp: '2026-03-01T09:00:00Z', type: 'lobbying_meeting', title: 'Keidanren economic policy briefing', description: 'Attended Japan Business Federation policy briefing on digital economy regulation.', evidenceCount: 2, source: 'lobby_register', entities: ['Keidanren'] },
+  { id: 'ev-103', actorId: 'actor-007', hash: 'u4d5e6', timestamp: '2026-02-10T14:00:00Z', type: 'social_media', title: 'Tweet: Taiwan Strait concerns', description: '"Japan must strengthen its defense capabilities. The situation in the Taiwan Strait demands our attention. I support PM\'s approach. 日本を守る 🇯🇵"', evidenceCount: 1, source: 'twitter', sourceHandle: '@TYamamotoLDP', sentiment: 'neutral', entities: ['Taiwan', 'Japan Self-Defense Forces'] },
+  { id: 'ev-104', actorId: 'actor-007', hash: 'u5e6f7', timestamp: '2026-01-20T09:00:00Z', type: 'financial_disclosure', title: 'Political funds report 2025', description: 'Filed ¥42M in political funds. Major donors: Toyota, Keidanren, construction associations.', evidenceCount: 2, source: 'financial_filing', entities: ['Toyota Motor Corp', 'Keidanren'] },
+  { id: 'ev-105', actorId: 'actor-007', hash: 'u6f7g8', timestamp: '2025-12-01T10:00:00Z', type: 'travel', title: 'Official visit to Washington D.C.', description: 'Met with Senate Armed Services Committee members on US-Japan defense cooperation.', evidenceCount: 4, source: 'official_record', entities: ['US Senate', 'Pentagon'] },
+
+  // ===== Claire Dupont (actor-008) =====
+  { id: 'ev-110', actorId: 'actor-008', hash: 't1a2b3', timestamp: '2026-03-19T14:00:00Z', type: 'vote', title: 'Voted YES on Pension Reform Amendment', description: 'Supported pension reform despite widespread protests.', evidenceCount: 6, source: 'parliamentary_record' },
+  { id: 'ev-111', actorId: 'actor-008', hash: 't2b3c4', timestamp: '2026-03-15T20:00:00Z', type: 'social_media', title: 'Tweet: Defending pension reform', description: '"I hear the anger. But we must face demographic reality. Our pension system needs reform NOW or it collapses in 10 years. Hard truths. #ReformeDesRetraites"', evidenceCount: 1, source: 'twitter', sourceHandle: '@CDupontRE', sentiment: 'neutral' },
+  { id: 'ev-112', actorId: 'actor-008', hash: 't3c4d5', timestamp: '2026-03-10T14:00:00Z', type: 'vote', title: 'Voted YES on Climate Adaptation Act', description: 'Supported climate adaptation measures for coastal and agricultural regions.', evidenceCount: 4, source: 'parliamentary_record' },
+  { id: 'ev-113', actorId: 'actor-008', hash: 't4d5e6', timestamp: '2026-03-01T10:00:00Z', type: 'lobbying_meeting', title: 'Meeting with TotalEnergies lobbyists', description: 'Scheduled meeting with TotalEnergies public affairs director on energy transition timeline.', evidenceCount: 3, source: 'lobby_register', entities: ['TotalEnergies'] },
+  { id: 'ev-114', actorId: 'actor-008', hash: 't5e6f7', timestamp: '2026-02-15T14:00:00Z', type: 'corporate_event', title: 'LVMH Diversity Gala', description: 'Attended LVMH-hosted gala dinner in Paris. Event featured luxury industry leaders and politicians.', evidenceCount: 2, source: 'news', entities: ['LVMH', 'Bernard Arnault'] },
+  { id: 'ev-115', actorId: 'actor-008', hash: 't6f7g8', timestamp: '2026-01-10T12:00:00Z', type: 'donation_received', title: '€15,000 from LVMH executives', description: 'HATVP filings show donations from LVMH-linked individuals totaling €15,000.', evidenceCount: 2, source: 'financial_filing', entities: ['LVMH'] },
+
+  // ===== Thomas Müller (actor-002) =====
+  { id: 'ev-120', actorId: 'actor-002', hash: 's1a2b3', timestamp: '2026-03-20T14:00:00Z', type: 'vote', title: 'Voted YES on Steuerreform 2026', description: 'Supported corporate tax reform in Council of States.', evidenceCount: 3, source: 'parliamentary_record' },
+  { id: 'ev-121', actorId: 'actor-002', hash: 's2b3c4', timestamp: '2026-03-18T14:00:00Z', type: 'vote', title: 'Voted NO on BVG-Reform', description: 'Opposed pension reform citing excessive regulation.', evidenceCount: 4, source: 'parliamentary_record' },
+  { id: 'ev-122', actorId: 'actor-002', hash: 's3c4d5', timestamp: '2026-03-05T10:00:00Z', type: 'lobbying_meeting', title: 'Meeting with UBS Group policy team', description: 'Registered meeting with UBS government affairs. Topic: banking regulation framework.', evidenceCount: 2, source: 'lobby_register', entities: ['UBS Group'] },
+  { id: 'ev-123', actorId: 'actor-002', hash: 's4d5e6', timestamp: '2026-02-20T19:00:00Z', type: 'corporate_event', title: 'WEF Davos side meeting', description: 'Attended private dinner at WEF with pharma and banking CEOs.', evidenceCount: 4, source: 'news', entities: ['WEF', 'Roche', 'UBS'] },
+  { id: 'ev-124', actorId: 'actor-002', hash: 's5e6f7', timestamp: '2026-02-01T08:00:00Z', type: 'social_media', title: 'Tweet: Pro-business stance', description: '"Switzerland\'s competitiveness depends on smart regulation, not more bureaucracy. Proud to fight for our SMEs. #Wirtschaft #FDP"', evidenceCount: 1, source: 'twitter', sourceHandle: '@TMuellerFDP', sentiment: 'positive', entities: ['SME industry'] },
+  { id: 'ev-125', actorId: 'actor-002', hash: 's6f7g8', timestamp: '2025-12-15T12:00:00Z', type: 'financial_disclosure', title: 'Interests register update', description: 'Updated Parliament interest register: Board member at SwissRe advisory council, Economiesuisse board.', evidenceCount: 2, source: 'official_record', entities: ['SwissRe', 'Economiesuisse'], diff: { removed: 'Board positions: Economiesuisse', added: 'Board positions: Economiesuisse, SwissRe Advisory Council' } },
 ];
 
 // ==================== RELATIONSHIPS ====================
@@ -284,6 +377,9 @@ export const relationships: Relationship[] = [
   { id: 'rel-008', sourceId: 'actor-001', sourceType: 'actor', targetId: 'actor-006', targetType: 'actor', type: 'ally', strength: 0.5, description: 'Co-signed open letter on global social policy standards at UN.', since: '2025-09-01' },
   // Intra-party rivalry
   { id: 'rel-009', sourceId: 'actor-004', sourceType: 'actor', targetId: 'actor-005', targetType: 'actor', type: 'rival', strength: 0.7, description: 'Frequent opponents in Senate/House debates on defense spending.' },
+  // Corporate/lobby relationships
+  { id: 'rel-010', sourceId: 'actor-005', sourceType: 'actor', targetId: 'actor-007', targetType: 'actor', type: 'cross_border_alliance', strength: 0.45, description: 'Both hawks on defense spending; met at US-Japan defense summit.', since: '2025-12-01' },
+  { id: 'rel-011', sourceId: 'actor-002', sourceType: 'actor', targetId: 'actor-003', targetType: 'actor', type: 'ally', strength: 0.55, description: 'Share pro-business stance; coordinate on EU financial regulation positions.', since: '2024-01-15' },
 ];
 
 // ==================== PROPOSALS ====================
@@ -343,12 +439,33 @@ export const eventTypeLabels: Record<ActorEvent['type'], string> = {
   vote: 'VOTE', speech: 'SPCH', committee_join: 'JOIN', committee_leave: 'LEFT', election: 'ELCT',
   appointment: 'APPT', resignation: 'RSGN', scandal: 'SCAN', policy_change: 'PLCY',
   party_switch: 'SWCH', legislation_sponsored: 'LGSL', foreign_meeting: 'FRGN',
+  lobbying_meeting: 'LOBY', corporate_event: 'CORP', financial_disclosure: 'FINC',
+  social_media: 'TWEET', travel: 'TRVL', donation_received: 'DONA',
+  public_statement: 'STMT', court_case: 'CORT', media_appearance: 'MDIA',
 };
 
 export const eventTypeColors: Record<ActorEvent['type'], string> = {
   vote: 'bg-primary/10', speech: 'bg-accent/20', committee_join: 'bg-green-500/10', committee_leave: 'bg-destructive/10',
   election: 'bg-yellow-500/10', appointment: 'bg-blue-500/10', resignation: 'bg-destructive/10', scandal: 'bg-destructive/20',
   policy_change: 'bg-purple-500/10', party_switch: 'bg-orange-500/10', legislation_sponsored: 'bg-green-500/10', foreign_meeting: 'bg-blue-500/10',
+  lobbying_meeting: 'bg-amber-500/10', corporate_event: 'bg-amber-500/10', financial_disclosure: 'bg-emerald-500/10',
+  social_media: 'bg-sky-500/10', travel: 'bg-indigo-500/10', donation_received: 'bg-yellow-500/10',
+  public_statement: 'bg-violet-500/10', court_case: 'bg-red-500/10', media_appearance: 'bg-pink-500/10',
+};
+
+export const sourceLabels: Record<NonNullable<ActorEvent['source']>, string> = {
+  twitter: '𝕏 TWITTER', official_record: 'OFFICIAL', news: 'NEWS', financial_filing: 'FILING',
+  parliamentary_record: 'PARLIAMENT', court_filing: 'COURT', lobby_register: 'LOBBY REG',
+};
+
+export const sourceColors: Record<NonNullable<ActorEvent['source']>, string> = {
+  twitter: 'bg-sky-500/20 text-sky-700 dark:text-sky-300',
+  official_record: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
+  news: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+  financial_filing: 'bg-green-500/20 text-green-700 dark:text-green-300',
+  parliamentary_record: 'bg-blue-500/20 text-blue-700 dark:text-blue-300',
+  court_filing: 'bg-red-500/20 text-red-700 dark:text-red-300',
+  lobby_register: 'bg-purple-500/20 text-purple-700 dark:text-purple-300',
 };
 
 // ==================== HELPERS ====================
