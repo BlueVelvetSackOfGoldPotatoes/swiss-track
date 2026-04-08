@@ -136,6 +136,56 @@ const ActorDetail = () => {
               </div>
             )}
 
+            {/* Twitter */}
+            {actor.twitterHandle && (
+              <div className="brutalist-border p-4">
+                <h3 className="font-mono text-xs font-bold mb-2">SOCIAL MEDIA</h3>
+                <div className="font-mono text-sm text-sky-600 dark:text-sky-400">{actor.twitterHandle}</div>
+                <div className="font-mono text-xs text-muted-foreground mt-1">
+                  {events.filter(e => e.source === 'twitter').length} tracked posts
+                </div>
+              </div>
+            )}
+
+            {/* Top Donors */}
+            {actor.topDonors && actor.topDonors.length > 0 && (
+              <div className="brutalist-border p-4">
+                <h3 className="font-mono text-xs font-bold mb-2">TOP DONORS</h3>
+                <div className="space-y-1">
+                  {actor.topDonors.map(d => (
+                    <div key={d} className="font-mono text-xs bg-secondary px-2 py-1.5 brutalist-border">{d}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Transparency score */}
+            <div className="brutalist-border p-4">
+              <h3 className="font-mono text-xs font-bold mb-2">TRANSPARENCY</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between font-mono text-xs">
+                  <span>Total events tracked</span>
+                  <span className="font-bold">{events.length}</span>
+                </div>
+                <div className="flex justify-between font-mono text-xs">
+                  <span>Sources</span>
+                  <span className="font-bold">{new Set(events.map(e => e.source).filter(Boolean)).size}</span>
+                </div>
+                <div className="flex justify-between font-mono text-xs">
+                  <span>Lobby meetings</span>
+                  <span className="font-bold">{events.filter(e => e.type === 'lobbying_meeting').length}</span>
+                </div>
+                <div className="flex justify-between font-mono text-xs">
+                  <span>Financial disclosures</span>
+                  <span className="font-bold">{events.filter(e => e.type === 'financial_disclosure').length}</span>
+                </div>
+                <div className="flex justify-between font-mono text-xs">
+                  <span>Corporate events</span>
+                  <span className="font-bold">{events.filter(e => e.type === 'corporate_event').length}</span>
+                </div>
+              </div>
+            </div>
+
             {/* Revision */}
             <div className="font-mono text-xs text-muted-foreground space-y-1">
               <div>rev: {actor.revisionId}</div>
