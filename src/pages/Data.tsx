@@ -52,10 +52,10 @@ const EU_COUNTRY_DATA: Record<string, { population: number; gdp: number; area: n
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="brutalist-border p-4 bg-card">
-      <div className="text-3xl font-extrabold tracking-tighter">{value}</div>
-      <div className="text-xs font-mono text-muted-foreground uppercase mt-1">{label}</div>
-      {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
+    <div className="brutalist-border p-2 sm:p-4 bg-card">
+      <div className="text-xl sm:text-3xl font-extrabold tracking-tighter">{value}</div>
+      <div className="text-[9px] sm:text-xs font-mono text-muted-foreground uppercase mt-0.5 sm:mt-1">{label}</div>
+      {sub && <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">{sub}</div>}
     </div>
   );
 }
