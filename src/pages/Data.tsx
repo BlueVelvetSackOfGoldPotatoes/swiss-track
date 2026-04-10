@@ -52,10 +52,10 @@ const EU_COUNTRY_DATA: Record<string, { population: number; gdp: number; area: n
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="brutalist-border p-4 bg-card">
-      <div className="text-3xl font-extrabold tracking-tighter">{value}</div>
-      <div className="text-xs font-mono text-muted-foreground uppercase mt-1">{label}</div>
-      {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
+    <div className="brutalist-border p-2 sm:p-4 bg-card">
+      <div className="text-xl sm:text-3xl font-extrabold tracking-tighter">{value}</div>
+      <div className="text-[9px] sm:text-xs font-mono text-muted-foreground uppercase mt-0.5 sm:mt-1">{label}</div>
+      {sub && <div className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 hidden sm:block">{sub}</div>}
     </div>
   );
 }
@@ -728,10 +728,10 @@ const Data = () => {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="container py-8 space-y-8">
+      <main className="container py-4 sm:py-8 space-y-6 sm:space-y-8">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tighter">DATA OBSERVATORY</h1>
-          <p className="text-sm font-mono text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tighter">DATA OBSERVATORY</h1>
+          <p className="text-xs sm:text-sm font-mono text-muted-foreground mt-1">
             Live statistics from {stats.totalPoliticians.toLocaleString()} politicians across {stats.totalCountries} EU countries.
             Click any bar, slice, or point for an in-depth breakdown.
           </p>
@@ -741,7 +741,7 @@ const Data = () => {
         <DetailPanel data={detail} onClose={() => setDetail(null)} />
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
           <StatCard label="Politicians" value={stats.totalPoliticians.toLocaleString()} />
           <StatCard label="Countries" value={stats.totalCountries} />
           <StatCard label="Parties" value={stats.totalParties} />

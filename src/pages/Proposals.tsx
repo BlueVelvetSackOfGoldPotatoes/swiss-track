@@ -56,11 +56,11 @@ const Proposals = () => {
         )}
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-6">
           <select
             value={countryFilter}
             onChange={e => setCountryFilter(e.target.value)}
-            className="brutalist-border px-3 py-1.5 text-xs font-mono bg-card"
+            className="brutalist-border px-3 py-2 sm:py-1.5 text-xs font-mono bg-card w-full"
           >
             <option value="">All Countries</option>
             {countries.map(c => (
@@ -71,7 +71,7 @@ const Proposals = () => {
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="brutalist-border px-3 py-1.5 text-xs font-mono bg-card"
+            className="brutalist-border px-3 py-2 sm:py-1.5 text-xs font-mono bg-card w-full"
           >
             <option value="">All Statuses</option>
             {Object.entries(statusLabels).map(([val, label]) => (
@@ -82,23 +82,23 @@ const Proposals = () => {
           <select
             value={areaFilter}
             onChange={e => setAreaFilter(e.target.value)}
-            className="brutalist-border px-3 py-1.5 text-xs font-mono bg-card"
+            className="brutalist-border px-3 py-2 sm:py-1.5 text-xs font-mono bg-card w-full"
           >
             <option value="">All Policy Areas</option>
             {POLICY_AREAS.filter(a => a !== 'all').map(a => (
               <option key={a} value={a}>{a.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
             ))}
           </select>
-
-          {(countryFilter || statusFilter || areaFilter) && (
-            <button
-              onClick={() => { setCountryFilter(''); setStatusFilter(''); setAreaFilter(''); }}
-              className="text-xs font-mono text-accent hover:underline"
-            >
-              Clear filters
-            </button>
-          )}
         </div>
+
+        {(countryFilter || statusFilter || areaFilter) && (
+          <button
+            onClick={() => { setCountryFilter(''); setStatusFilter(''); setAreaFilter(''); }}
+            className="text-xs font-mono text-accent hover:underline mb-4 block"
+          >
+            ✕ Clear filters
+          </button>
+        )}
 
         {isLoading ? (
           <div className="font-mono text-sm text-muted-foreground">Loading proposals...</div>
@@ -107,7 +107,7 @@ const Proposals = () => {
             <p className="font-mono text-sm text-muted-foreground">No proposals match the current filters.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {proposals.map((p) => (
               <ProposalCard key={p.id} proposal={p} />
             ))}

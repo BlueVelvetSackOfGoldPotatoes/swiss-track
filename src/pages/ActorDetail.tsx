@@ -98,30 +98,30 @@ const ActorDetail = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
-      <main className="container flex-1 py-8 max-w-4xl">
+      <main className="container flex-1 py-4 sm:py-8 max-w-4xl">
         <Link to="/actors" className="text-accent underline text-xs font-mono mb-4 inline-block">← ACTORS</Link>
 
         {/* Header with photo */}
-        <div className="brutalist-border-b pb-4 mb-6">
-          <div className="flex gap-4 items-start">
+        <div className="brutalist-border-b pb-4 mb-4 sm:mb-6">
+          <div className="flex gap-3 sm:gap-4 items-start">
             {actor.photoUrl && (
               <img
                 src={actor.photoUrl}
                 alt={actor.name}
-                className="w-20 h-20 rounded object-cover brutalist-border flex-shrink-0"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded object-cover brutalist-border flex-shrink-0"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             )}
-            <div className="flex-1">
-              <div className="flex gap-2 mb-2 flex-wrap">
-                <span className="evidence-tag">{actor.countryId.toUpperCase()}</span>
-                <span className="evidence-tag">{actor.party}</span>
-                <span className="evidence-tag">{actor.jurisdiction.toUpperCase()}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex gap-1 sm:gap-2 mb-2 flex-wrap">
+                <span className="evidence-tag text-[10px] sm:text-xs">{actor.countryId.toUpperCase()}</span>
+                <span className="evidence-tag text-[10px] sm:text-xs truncate max-w-[120px] sm:max-w-none">{actor.party}</span>
+                <span className="evidence-tag text-[10px] sm:text-xs">{actor.jurisdiction.toUpperCase()}</span>
               </div>
-              <h1 className="text-2xl font-extrabold tracking-tight">{actor.name}</h1>
-              <p className="text-sm font-mono text-muted-foreground">{actor.role} · {actor.canton}</p>
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">{actor.name}</h1>
+              <p className="text-xs sm:text-sm font-mono text-muted-foreground">{actor.role} · {actor.canton}</p>
               {actor.wikipediaData?.description && (
-                <p className="text-xs text-muted-foreground mt-1 italic">{actor.wikipediaData.description}</p>
+                <p className="text-xs text-muted-foreground mt-1 italic hidden sm:block">{actor.wikipediaData.description}</p>
               )}
               <ProvenanceBar sources={[
                 ...(actor.wikipediaUrl ? [{ label: 'Wikipedia', url: actor.wikipediaUrl, type: 'official' as const }] : []),
@@ -131,7 +131,7 @@ const ActorDetail = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4 sm:gap-8">
           <div>
             {/* Wikipedia biography */}
             {actor.wikipediaSummary && (
