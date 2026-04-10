@@ -631,9 +631,9 @@ const Data = () => {
   const eventTotal = stats.byEventType.reduce((s, e) => s + e.count, 0);
   const eventsWithTotal = stats.byEventType.map(e => ({ ...e, total: eventTotal }));
 
-  const handleBarClick = (data: any, chartTitle: string, extra?: Record<string, string | number>) => {
+  const handleBarClick = (data: any, _index: any, chartTitle: string, extra?: Record<string, string | number>) => {
     if (!data) return;
-    const d = data.activePayload?.[0]?.payload || data;
+    const d = data.payload || data;
     const ref = EU_COUNTRY_DATA[d.code || d.name];
     const rows: Array<{ label: string; value: string | number; bar?: number; color?: string }> = [
       { label: 'Value', value: (d.count ?? d.perMillion ?? d.perBillion ?? d.gdpPerPolitician ?? d.avgSalary ?? d.value ?? 0).toLocaleString() },
