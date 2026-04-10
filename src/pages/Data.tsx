@@ -639,6 +639,7 @@ function useDataStats() {
         proposalsByArea: Object.entries(proposalsByArea).map(([name, count]) => ({ name: name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
         proposalsByType: Object.entries(proposalsByType).map(([name, count]) => ({ name: name.replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
         proposalCountries: Object.keys(proposalsByCountry).length,
+        dataAvailability,
       };
     },
   });
