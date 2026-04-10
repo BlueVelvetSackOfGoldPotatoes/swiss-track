@@ -75,6 +75,22 @@ export function PoliticalCompassChart({ positions, highlightId, height = 400 }: 
     );
   };
 
+  const BgDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    if (cx == null || cy == null) return null;
+    return (
+      <circle cx={cx} cy={cy} r={3} fill={getIdeologyColor(payload.ideology)} opacity={highlightId ? 0.15 : 0.6} />
+    );
+  };
+
+  const HighlightDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    if (cx == null || cy == null) return null;
+    return (
+      <circle cx={cx} cy={cy} r={10} fill={getIdeologyColor(payload.ideology)} opacity={1} stroke="hsl(var(--foreground))" strokeWidth={2.5} />
+    );
+  };
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 30 }}>
@@ -92,31 +108,11 @@ export function PoliticalCompassChart({ positions, highlightId, height = 400 }: 
         <Tooltip content={renderTooltip} />
         
         {/* Background dots */}
-        <Scatter data={bgData} shape="circle">
-          {bgData.map((d, i) => (
-            <Cell
-              key={i}
-              fill={getIdeologyColor(d.ideology)}
-              opacity={highlightId ? 0.15 : 0.6}
-              r={3}
-            />
-          ))}
-        </Scatter>
+        <Scatter data={bgData} shape={<BgDot />} />
 
         {/* Highlighted politician - rendered on top, larger, with stroke */}
         {highlighted.length > 0 && (
-          <Scatter data={highlighted} shape="circle">
-            {highlighted.map((d, i) => (
-              <Cell
-                key={i}
-                fill={getIdeologyColor(d.ideology)}
-                opacity={1}
-                r={8}
-                stroke="hsl(var(--foreground))"
-                strokeWidth={2}
-              />
-            ))}
-          </Scatter>
+          <Scatter data={highlighted} shape={<HighlightDot />} />
         )}
       </ScatterChart>
     </ResponsiveContainer>
