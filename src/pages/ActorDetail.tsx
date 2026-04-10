@@ -3,9 +3,11 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import ActorTimeline from '@/components/ActorTimeline';
 import ActorCharts from '@/components/ActorCharts';
-import { usePolitician, usePoliticianEvents, usePoliticianFinances, usePoliticianInvestments } from '@/hooks/use-politicians';
-import { ExternalLink, TrendingUp, Building2, Briefcase, DollarSign } from 'lucide-react';
+import { usePolitician, usePoliticianEvents, usePoliticianFinances, usePoliticianInvestments, usePoliticianPosition, useAllPositions } from '@/hooks/use-politicians';
+import { ExternalLink, TrendingUp, Building2, Briefcase, DollarSign, Compass } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PoliticalCompassChart, IdeologyLegend } from '@/components/PoliticalCompass';
+import { PolicyRadarChart, PoliticalAxesBar, KeyPositionsList } from '@/components/PolicyRadar';
 
 const SECTOR_COLORS: Record<string, string> = {
   Technology: 'hsl(215, 30%, 45%)',
@@ -28,6 +30,8 @@ const ActorDetail = () => {
   const { data: events = [] } = usePoliticianEvents(id);
   const { data: finances } = usePoliticianFinances(id);
   const { data: investments = [] } = usePoliticianInvestments(id);
+  const { data: position } = usePoliticianPosition(id);
+  const { data: allPositions = [] } = useAllPositions();
 
   if (isLoading) {
     return (
