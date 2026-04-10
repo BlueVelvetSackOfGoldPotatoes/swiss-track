@@ -167,3 +167,21 @@
     background: hsl(var(--muted) / 0.4);
   }
 }
+
+/* Mobile responsiveness utilities */
+@layer utilities {
+  .mobile-scroll-x {
+    @apply overflow-x-auto -mx-4 px-4;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Make recharts responsive on mobile */
+  @media (max-width: 640px) {
+    .recharts-wrapper {
+      font-size: 9px !important;
+    }
+    .recharts-cartesian-axis-tick text {
+      font-size: 8px !important;
+    }
+  }
+}
