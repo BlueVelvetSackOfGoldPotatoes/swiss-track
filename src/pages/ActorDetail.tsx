@@ -3,13 +3,31 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import ActorTimeline from '@/components/ActorTimeline';
 import ActorCharts from '@/components/ActorCharts';
-import { usePolitician, usePoliticianEvents } from '@/hooks/use-politicians';
-import { ExternalLink } from 'lucide-react';
+import { usePolitician, usePoliticianEvents, usePoliticianFinances, usePoliticianInvestments } from '@/hooks/use-politicians';
+import { ExternalLink, TrendingUp, Building2, Briefcase, DollarSign } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+
+const SECTOR_COLORS: Record<string, string> = {
+  Technology: 'hsl(215, 30%, 45%)',
+  Energy: 'hsl(45, 70%, 50%)',
+  Finance: 'hsl(150, 40%, 40%)',
+  Healthcare: 'hsl(0, 55%, 45%)',
+  'Real Estate': 'hsl(280, 30%, 50%)',
+  Defense: 'hsl(30, 60%, 50%)',
+  Consulting: 'hsl(180, 40%, 40%)',
+};
+
+function formatCurrency(value: number | null, currency = 'EUR') {
+  if (value === null || value === undefined) return '—';
+  return new Intl.NumberFormat('en-EU', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
+}
 
 const ActorDetail = () => {
   const { id } = useParams();
   const { data: actor, isLoading } = usePolitician(id);
   const { data: events = [] } = usePoliticianEvents(id);
+  const { data: finances } = usePoliticianFinances(id);
+  const { data: investments = [] } = usePoliticianInvestments(id);
 
   if (isLoading) {
     return (
@@ -37,6 +55,18 @@ const ActorDetail = () => {
   }
 
   const infobox = actor.wikipediaData?.infobox as Record<string, string> | undefined;
+  const totalInvestmentValue = investments.reduce((s, i) => s + (i.estimated_value || 0), 0);
+  const totalIncome = (finances?.annual_salary || 0) + (finances?.side_income || 0);
+
+  // Sector breakdown for pie chart
+  const sectorMap: Record<string, number> = {};
+  investments.forEach(inv => {
+    const sector = inv.sector || 'Other';
+    sectorMap[sector] = (sectorMap[sector] || 0) + (inv.estimated_value || 0);
+  });
+  const sectorData = Object.entries(sectorMap)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -76,21 +106,110 @@ const ActorDetail = () => {
             {actor.wikipediaSummary && (
               <section className="mb-8">
                 <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
-                  <span className="inline-block w-3 h-3 rounded-full bg-blue-500" />
+                  <span className="inline-block w-3 h-3 rounded-full bg-primary" />
                   BIOGRAPHY
                 </h2>
                 <div className="brutalist-border p-4 bg-secondary/30">
                   <p className="text-sm leading-relaxed">{actor.wikipediaSummary}</p>
                   {actor.wikipediaUrl && (
-                    <a
-                      href={actor.wikipediaUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-mono text-accent hover:underline mt-3"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      Read full article on Wikipedia
+                    <a href={actor.wikipediaUrl} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-mono text-accent hover:underline mt-3">
+                      <ExternalLink className="w-3 h-3" /> Read full article on Wikipedia
                     </a>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Financial Overview */}
+            {finances && (
+              <section className="mb-8">
+                <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                  <DollarSign className="w-3 h-3" />
+                  FINANCIAL OVERVIEW ({finances.declaration_year})
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  <div className="brutalist-border p-3 bg-card">
+                    <div className="text-lg font-extrabold tracking-tighter">{formatCurrency(finances.annual_salary)}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase">Annual Salary</div>
+                  </div>
+                  <div className="brutalist-border p-3 bg-card">
+                    <div className="text-lg font-extrabold tracking-tighter">{formatCurrency(finances.side_income)}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase">Side Income</div>
+                  </div>
+                  <div className="brutalist-border p-3 bg-card">
+                    <div className="text-lg font-extrabold tracking-tighter">{formatCurrency(finances.declared_assets)}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase">Declared Assets</div>
+                  </div>
+                  <div className="brutalist-border p-3 bg-card">
+                    <div className="text-lg font-extrabold tracking-tighter">{formatCurrency(finances.property_value)}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase">Property</div>
+                  </div>
+                </div>
+                {finances.salary_source && (
+                  <p className="text-xs font-mono text-muted-foreground">Source: {finances.salary_source}</p>
+                )}
+              </section>
+            )}
+
+            {/* Investment Portfolio */}
+            {investments.length > 0 && (
+              <section className="mb-8">
+                <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-3 h-3" />
+                  INVESTMENT PORTFOLIO · {investments.length} holdings · {formatCurrency(totalInvestmentValue)}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-4">
+                  <div className="brutalist-border bg-card overflow-hidden">
+                    <div className="max-h-[300px] overflow-y-auto">
+                      <table className="w-full text-xs font-mono">
+                        <thead className="sticky top-0 bg-card">
+                          <tr className="border-b border-border">
+                            <th className="text-left p-2 font-bold">COMPANY</th>
+                            <th className="text-left p-2 font-bold">SECTOR</th>
+                            <th className="text-right p-2 font-bold">VALUE</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {investments.map(inv => (
+                            <tr key={inv.id} className="border-b border-border/50 hover:bg-muted/50">
+                              <td className="p-2 font-medium flex items-center gap-1.5">
+                                <Building2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                {inv.company_name}
+                              </td>
+                              <td className="p-2">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted">{inv.sector || '—'}</span>
+                              </td>
+                              <td className="p-2 text-right font-bold">{formatCurrency(inv.estimated_value)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  {sectorData.length > 1 && (
+                    <div className="brutalist-border bg-card p-2">
+                      <p className="text-[10px] font-mono font-bold text-muted-foreground text-center mb-1">BY SECTOR</p>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <PieChart>
+                          <Pie data={sectorData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={30}>
+                            {sectorData.map((s, i) => (
+                              <Cell key={i} fill={SECTOR_COLORS[s.name] || `hsl(${i * 60}, 40%, 45%)`} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="space-y-1 px-1">
+                        {sectorData.map((s, i) => (
+                          <div key={s.name} className="flex items-center gap-1.5 text-[10px] font-mono">
+                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: SECTOR_COLORS[s.name] || `hsl(${i * 60}, 40%, 45%)` }} />
+                            <span className="truncate">{s.name}</span>
+                            <span className="ml-auto text-muted-foreground">{((s.value / totalInvestmentValue) * 100).toFixed(0)}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </section>
@@ -105,7 +224,6 @@ const ActorDetail = () => {
                   </h2>
                   <ActorCharts events={events} />
                 </section>
-
                 <section className="mb-8">
                   <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
                     <span className="inline-block w-3 h-3 rounded-full bg-primary" />
@@ -116,15 +234,45 @@ const ActorDetail = () => {
               </>
             )}
 
-            {events.length === 0 && !actor.wikipediaSummary && (
+            {events.length === 0 && !actor.wikipediaSummary && !finances && (
               <div className="brutalist-border p-6 bg-secondary text-center">
                 <p className="font-mono text-sm text-muted-foreground">No events tracked yet for this politician.</p>
-                <p className="font-mono text-xs text-muted-foreground mt-1">Events will appear here once data is scraped.</p>
               </div>
             )}
           </div>
 
           <aside className="space-y-6">
+            {/* Income summary card */}
+            {finances && totalIncome > 0 && (
+              <div className="brutalist-border p-4 bg-accent/5">
+                <h3 className="font-mono text-xs font-bold mb-2 flex items-center gap-1.5">
+                  <Briefcase className="w-3 h-3" /> INCOME SUMMARY
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between font-mono text-xs">
+                    <span>Salary</span>
+                    <span className="font-bold">{formatCurrency(finances.annual_salary)}</span>
+                  </div>
+                  {(finances.side_income || 0) > 0 && (
+                    <div className="flex justify-between font-mono text-xs">
+                      <span>Side income</span>
+                      <span className="font-bold">{formatCurrency(finances.side_income)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-border pt-1 flex justify-between font-mono text-xs">
+                    <span className="font-bold">Total</span>
+                    <span className="font-bold">{formatCurrency(totalIncome)}</span>
+                  </div>
+                  {investments.length > 0 && (
+                    <div className="flex justify-between font-mono text-xs text-muted-foreground">
+                      <span>Investment portfolio</span>
+                      <span>{formatCurrency(totalInvestmentValue)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Infobox from Wikipedia */}
             {infobox && Object.keys(infobox).length > 0 && (
               <div className="brutalist-border p-4">
@@ -158,27 +306,16 @@ const ActorDetail = () => {
               </div>
             )}
 
-            {actor.topDonors && actor.topDonors.length > 0 && (
-              <div className="brutalist-border p-4">
-                <h3 className="font-mono text-xs font-bold mb-2">TOP DONORS</h3>
-                <div className="space-y-1">
-                  {actor.topDonors.map(d => (
-                    <div key={d} className="font-mono text-xs bg-secondary px-2 py-1.5 brutalist-border">{d}</div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="brutalist-border p-4">
               <h3 className="font-mono text-xs font-bold mb-2">TRANSPARENCY</h3>
               <div className="space-y-2">
                 <div className="flex justify-between font-mono text-xs">
-                  <span>Total events tracked</span>
+                  <span>Events tracked</span>
                   <span className="font-bold">{events.length}</span>
                 </div>
                 <div className="flex justify-between font-mono text-xs">
-                  <span>Sources</span>
-                  <span className="font-bold">{new Set(events.map(e => e.source).filter(Boolean)).size}</span>
+                  <span>Investments disclosed</span>
+                  <span className="font-bold">{investments.length}</span>
                 </div>
                 <div className="flex justify-between font-mono text-xs">
                   <span>Wikipedia enriched</span>

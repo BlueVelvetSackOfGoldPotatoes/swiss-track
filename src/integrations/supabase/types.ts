@@ -118,6 +118,112 @@ export type Database = {
           },
         ]
       }
+      politician_finances: {
+        Row: {
+          annual_salary: number | null
+          created_at: string
+          currency: string | null
+          declaration_year: number | null
+          declared_assets: number | null
+          declared_debt: number | null
+          id: string
+          notes: string | null
+          politician_id: string
+          property_value: number | null
+          salary_source: string | null
+          side_income: number | null
+          updated_at: string
+        }
+        Insert: {
+          annual_salary?: number | null
+          created_at?: string
+          currency?: string | null
+          declaration_year?: number | null
+          declared_assets?: number | null
+          declared_debt?: number | null
+          id?: string
+          notes?: string | null
+          politician_id: string
+          property_value?: number | null
+          salary_source?: string | null
+          side_income?: number | null
+          updated_at?: string
+        }
+        Update: {
+          annual_salary?: number | null
+          created_at?: string
+          currency?: string | null
+          declaration_year?: number | null
+          declared_assets?: number | null
+          declared_debt?: number | null
+          id?: string
+          notes?: string | null
+          politician_id?: string
+          property_value?: number | null
+          salary_source?: string | null
+          side_income?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "politician_finances_politician_id_fkey"
+            columns: ["politician_id"]
+            isOneToOne: false
+            referencedRelation: "politicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      politician_investments: {
+        Row: {
+          company_name: string
+          created_at: string
+          currency: string | null
+          disclosure_date: string | null
+          estimated_value: number | null
+          id: string
+          investment_type: string
+          is_active: boolean | null
+          notes: string | null
+          politician_id: string
+          sector: string | null
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          currency?: string | null
+          disclosure_date?: string | null
+          estimated_value?: number | null
+          id?: string
+          investment_type?: string
+          is_active?: boolean | null
+          notes?: string | null
+          politician_id: string
+          sector?: string | null
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          currency?: string | null
+          disclosure_date?: string | null
+          estimated_value?: number | null
+          id?: string
+          investment_type?: string
+          is_active?: boolean | null
+          notes?: string | null
+          politician_id?: string
+          sector?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "politician_investments_politician_id_fkey"
+            columns: ["politician_id"]
+            isOneToOne: false
+            referencedRelation: "politicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       politicians: {
         Row: {
           biography: string | null
