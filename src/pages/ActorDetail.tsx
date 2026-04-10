@@ -33,6 +33,7 @@ const ActorDetail = () => {
   const { data: investments = [] } = usePoliticianInvestments(id);
   const { data: position } = usePoliticianPosition(id);
   const { data: allPositions = [] } = useAllPositions();
+  const { data: associates = [] } = usePoliticianAssociates(id);
 
   if (isLoading) {
     return (
