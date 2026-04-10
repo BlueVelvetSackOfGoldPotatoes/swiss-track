@@ -60,7 +60,7 @@ function useDataStats() {
   return useQuery({
     queryKey: ['data-stats'],
     queryFn: async () => {
-      const [politicians, events, countryData, partyData, jurisdictionData, eventTypeData, enrichmentData, epGroupData] = await Promise.all([
+      const [politicians, events, countryData, partyData, jurisdictionData, eventTypeData, enrichmentData, epGroupData, financesData, investmentsData] = await Promise.all([
         supabase.from('politicians').select('id', { count: 'exact', head: true }),
         supabase.from('political_events').select('id', { count: 'exact', head: true }),
         supabase.from('politicians').select('country_name, country_code'),
@@ -69,6 +69,8 @@ function useDataStats() {
         supabase.from('political_events').select('event_type'),
         supabase.from('politicians').select('enriched_at'),
         supabase.from('politicians').select('party_name').not('party_name', 'is', null),
+        supabase.from('politician_finances').select('politician_id, annual_salary, side_income, declared_assets, property_value, salary_source'),
+        supabase.from('politician_investments').select('politician_id, company_name, sector, estimated_value, investment_type'),
       ]);
 
       // Country breakdown
