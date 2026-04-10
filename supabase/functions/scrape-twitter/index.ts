@@ -1,9 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-import { hmac } from "https://deno.land/x/hmac@v2.0.1/mod.ts";
+
+const TWITTER_API = "https://api.x.com/2";
+
+// Use Web Crypto API for HMAC-SHA1
+async function hmacSha1(key: string, data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw", encoder.encode(key), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(data));
+  return btoa(String.fromCharCode(...new Uint8Array(signature)));
+}
 
 const TWITTER_API = "https://api.x.com/2";
 
