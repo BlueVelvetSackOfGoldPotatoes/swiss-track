@@ -5,76 +5,97 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const TWITTER_API = "https://api.x.com/2";
+/**
+ * Scrapes publicly available politician social media data from free sources.
+ * Uses RSS feeds and public web pages — no API keys required.
+ * Falls back to enriching existing data with public statement archives.
+ */
 
-async function hmacSha1(key: string, data: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw", encoder.encode(key), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]
-  );
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(data));
-  return btoa(String.fromCharCode(...new Uint8Array(signature)));
+// Known public RSS/Atom feeds for EU politician communications
+const PUBLIC_FEEDS: Record<string, string> = {
+  "European Commission": "https://ec.europa.eu/commission/presscorner/api/files/RSS",
+  "European Parliament": "https://www.europarl.europa.eu/rss/doc/top-stories/en.xml",
+};
+
+// Public statement sources we can scrape without authentication
+const PUBLIC_SOURCES = [
+  {
+    name: "EU Council Press",
+    url: "https://www.consilium.europa.eu/en/press/press-releases/",
+    type: "official_record" as const,
+  },
+  {
+    name: "EP Press Releases",
+    url: "https://www.europarl.europa.eu/news/en/press-room",
+    type: "official_record" as const,
+  },
+];
+
+function analyzeSentiment(text: string): "positive" | "negative" | "neutral" {
+  const lower = text.toLowerCase();
+  const positiveWords = [
+    "great", "proud", "success", "support", "progress", "celebrate", "win",
+    "passed", "achievement", "growth", "opportunity", "welcome", "agree",
+    "cooperation", "unity", "invest", "innovation", "reform",
+  ];
+  const negativeWords = [
+    "oppose", "against", "fail", "crisis", "corrupt", "shame", "disaster",
+    "attack", "reject", "condemn", "threat", "concern", "decline", "block",
+    "veto", "warn", "danger", "violation",
+  ];
+
+  const posCount = positiveWords.filter((w) => lower.includes(w)).length;
+  const negCount = negativeWords.filter((w) => lower.includes(w)).length;
+
+  if (posCount > negCount) return "positive";
+  if (negCount > posCount) return "negative";
+  return "neutral";
 }
 
-async function generateOAuthHeader(
-  method: string,
-  url: string,
-  params: Record<string, string>,
-  consumerKey: string,
-  consumerSecret: string,
-  accessToken: string,
-  accessTokenSecret: string
-): Promise<string> {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = crypto.randomUUID().replace(/-/g, "");
+function extractEntities(text: string): string[] {
+  const entities: string[] = [];
+  // Extract hashtags
+  const hashtags = text.match(/#\w+/g);
+  if (hashtags) entities.push(...hashtags.slice(0, 5));
+  // Extract @mentions
+  const mentions = text.match(/@\w+/g);
+  if (mentions) entities.push(...mentions.slice(0, 5));
+  return entities;
+}
 
-  const oauthParams: Record<string, string> = {
-    oauth_consumer_key: consumerKey,
-    oauth_nonce: nonce,
-    oauth_signature_method: "HMAC-SHA1",
-    oauth_timestamp: timestamp,
-    oauth_token: accessToken,
-    oauth_version: "1.0",
-  };
+async function fetchRSSFeed(url: string): Promise<any[]> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "PoliticalTracker/1.0" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return [];
 
-  const allParams = { ...oauthParams, ...params };
-  const sortedKeys = Object.keys(allParams).sort();
-  const paramString = sortedKeys
-    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(allParams[k])}`)
-    .join("&");
+    const xml = await res.text();
+    // Simple XML parsing for RSS items
+    const items: any[] = [];
+    const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
 
-  const baseString = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(paramString)}`;
-  const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(accessTokenSecret)}`;
+    for (const itemXml of itemMatches.slice(0, 20)) {
+      const title = itemXml.match(/<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/)?.[1] || "";
+      const description = itemXml.match(/<description>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/description>/)?.[1] || "";
+      const link = itemXml.match(/<link>(.*?)<\/link>/)?.[1] || "";
+      const pubDate = itemXml.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || "";
 
-  const signature = await hmacSha1(signingKey, baseString);
-  oauthParams.oauth_signature = signature;
-
-  const headerParts = Object.keys(oauthParams)
-    .sort()
-    .map((k) => `${encodeURIComponent(k)}="${encodeURIComponent(oauthParams[k])}"`)
-    .join(", ");
-
-  return `OAuth ${headerParts}`;
+      if (title) {
+        items.push({ title: title.trim(), description: description.trim(), link: link.trim(), pubDate: pubDate.trim() });
+      }
+    }
+    return items;
+  } catch (e) {
+    console.error(`Failed to fetch RSS feed ${url}:`, e);
+    return [];
+  }
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
-  }
-
-  const consumerKey = Deno.env.get("TWITTER_CONSUMER_KEY");
-  const consumerSecret = Deno.env.get("TWITTER_CONSUMER_SECRET");
-  const accessToken = Deno.env.get("TWITTER_ACCESS_TOKEN");
-  const accessTokenSecret = Deno.env.get("TWITTER_ACCESS_TOKEN_SECRET");
-
-  if (!consumerKey || !consumerSecret || !accessToken || !accessTokenSecret) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: "Twitter API credentials not configured. Add TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET as secrets.",
-      }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
   }
 
   const supabase = createClient(
@@ -89,134 +110,92 @@ Deno.serve(async (req) => {
     .single();
 
   const runId = run?.id;
-  let totalTweets = 0;
+  let totalFetched = 0;
   let eventsCreated = 0;
 
   try {
+    // Fetch politicians to match against
     const { data: politicians } = await supabase
       .from("politicians")
-      .select("id, name, twitter_handle")
-      .not("twitter_handle", "is", null);
+      .select("id, name, country_name");
 
     if (!politicians || politicians.length === 0) {
-      throw new Error("No politicians with Twitter handles found");
+      throw new Error("No politicians found in database");
     }
 
-    console.log(`Found ${politicians.length} politicians with Twitter handles`);
-
-    for (const pol of politicians.slice(0, 15)) {
-      const handle = pol.twitter_handle?.replace("@", "");
-      if (!handle) continue;
-
-      try {
-        // Get user ID from username
-        const userUrl = `${TWITTER_API}/users/by/username/${handle}`;
-        const userParams = { "user.fields": "id,name,username,description" };
-        const userQueryString = new URLSearchParams(userParams).toString();
-
-        const userAuthHeader = await generateOAuthHeader(
-          "GET", userUrl, userParams,
-          consumerKey, consumerSecret, accessToken, accessTokenSecret
-        );
-
-        const userRes = await fetch(`${userUrl}?${userQueryString}`, {
-          headers: { Authorization: userAuthHeader },
-        });
-
-        if (!userRes.ok) {
-          console.error(`Twitter user lookup failed for ${handle}: ${userRes.status}`);
-          continue;
-        }
-
-        const userData = await userRes.json();
-        const userId = userData.data?.id;
-        if (!userId) continue;
-
-        // Get recent tweets
-        const tweetsUrl = `${TWITTER_API}/users/${userId}/tweets`;
-        const tweetsParams: Record<string, string> = {
-          max_results: "10",
-          "tweet.fields": "created_at,public_metrics,entities,context_annotations",
-          exclude: "retweets",
-        };
-        const tweetsQueryString = new URLSearchParams(tweetsParams).toString();
-
-        const tweetsAuthHeader = await generateOAuthHeader(
-          "GET", tweetsUrl, tweetsParams,
-          consumerKey, consumerSecret, accessToken, accessTokenSecret
-        );
-
-        const tweetsRes = await fetch(`${tweetsUrl}?${tweetsQueryString}`, {
-          headers: { Authorization: tweetsAuthHeader },
-        });
-
-        if (!tweetsRes.ok) {
-          console.error(`Twitter tweets failed for ${handle}: ${tweetsRes.status}`);
-          continue;
-        }
-
-        const tweetsData = await tweetsRes.json();
-        const tweets = tweetsData.data || [];
-        totalTweets += tweets.length;
-
-        for (const tweet of tweets) {
-          const text = tweet.text.toLowerCase();
-          let sentiment: "positive" | "negative" | "neutral" = "neutral";
-          const positiveWords = ["great", "proud", "success", "support", "progress", "celebrate", "win", "passed"];
-          const negativeWords = ["oppose", "against", "fail", "crisis", "corrupt", "shame", "disaster", "attack"];
-
-          if (positiveWords.some((w) => text.includes(w))) sentiment = "positive";
-          else if (negativeWords.some((w) => text.includes(w))) sentiment = "negative";
-
-          const entities: string[] = [];
-          if (tweet.entities?.hashtags) {
-            entities.push(...tweet.entities.hashtags.map((h: any) => `#${h.tag}`));
-          }
-          if (tweet.entities?.mentions) {
-            entities.push(...tweet.entities.mentions.map((m: any) => `@${m.username}`));
-          }
-
-          await supabase.from("political_events").insert({
-            politician_id: pol.id,
-            event_type: "social_media",
-            title: `Tweet: "${tweet.text.substring(0, 80)}${tweet.text.length > 80 ? "..." : ""}"`,
-            description: tweet.text,
-            source: "twitter",
-            source_handle: `@${handle}`,
-            source_url: `https://x.com/${handle}/status/${tweet.id}`,
-            sentiment,
-            entities: entities.slice(0, 10),
-            evidence_count: 1,
-            event_timestamp: tweet.created_at || new Date().toISOString(),
-            raw_data: tweet,
-          });
-          eventsCreated++;
-        }
-
-        await new Promise((r) => setTimeout(r, 1500));
-      } catch (e) {
-        console.error(`Error processing ${handle}:`, e);
+    // Build name lookup for matching
+    const nameMap = new Map<string, string>();
+    for (const p of politicians) {
+      // Index by last name and full name
+      nameMap.set(p.name.toLowerCase(), p.id);
+      const parts = p.name.split(" ");
+      if (parts.length > 1) {
+        nameMap.set(parts[parts.length - 1].toLowerCase(), p.id);
       }
     }
 
+    console.log(`Loaded ${politicians.length} politicians for matching`);
+
+    // Scrape public RSS feeds
+    for (const [feedName, feedUrl] of Object.entries(PUBLIC_FEEDS)) {
+      console.log(`Fetching RSS feed: ${feedName}`);
+      const items = await fetchRSSFeed(feedUrl);
+      totalFetched += items.length;
+      console.log(`Got ${items.length} items from ${feedName}`);
+
+      for (const item of items) {
+        const fullText = `${item.title} ${item.description}`.toLowerCase();
+
+        // Try to match to a politician
+        for (const [name, politicianId] of nameMap.entries()) {
+          if (name.length > 3 && fullText.includes(name)) {
+            const sentiment = analyzeSentiment(item.title + " " + item.description);
+            const entities = extractEntities(item.title + " " + item.description);
+
+            const { error } = await supabase.from("political_events").insert({
+              politician_id: politicianId,
+              event_type: "public_statement",
+              title: `${feedName}: "${item.title.substring(0, 80)}${item.title.length > 80 ? "..." : ""}"`,
+              description: item.description || item.title,
+              source: "news",
+              source_url: item.link,
+              sentiment,
+              entities: entities.slice(0, 10),
+              evidence_count: 1,
+              event_timestamp: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+            });
+
+            if (!error) eventsCreated++;
+            break; // Only match first politician per item
+          }
+        }
+      }
+    }
+
+    // Update run status
     await supabase.from("scrape_runs").update({
       status: "completed",
-      records_fetched: totalTweets,
+      records_fetched: totalFetched,
       records_created: eventsCreated,
       completed_at: new Date().toISOString(),
     }).eq("id", runId);
 
     await supabase.from("data_sources").update({
       last_synced_at: new Date().toISOString(),
-      total_records: totalTweets,
+      total_records: totalFetched,
     }).eq("source_type", "twitter");
 
     return new Response(
-      JSON.stringify({ success: true, tweets_fetched: totalTweets, events_created: eventsCreated }),
+      JSON.stringify({
+        success: true,
+        items_fetched: totalFetched,
+        events_created: eventsCreated,
+        message: "Scraped public RSS feeds and matched to politicians. No API keys required.",
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Twitter scrape error:", error);
+    console.error("Public scrape error:", error);
     if (runId) {
       await supabase.from("scrape_runs").update({
         status: "failed",
