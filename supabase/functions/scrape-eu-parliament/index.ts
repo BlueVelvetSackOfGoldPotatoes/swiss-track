@@ -11,6 +11,15 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Parse request body for pagination
+  let offset = 0;
+  let limit = 50;
+  try {
+    const body = await req.json();
+    offset = body.offset || 0;
+    limit = Math.min(body.limit || 50, 100);
+  } catch { /* no body = defaults */ }
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
