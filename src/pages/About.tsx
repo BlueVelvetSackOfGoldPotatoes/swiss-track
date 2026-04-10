@@ -18,7 +18,7 @@ const About = () => {
                 TIER 1 — Official / Primary Institutional
               </div>
               <div className="px-3 py-2 brutalist-border-b text-sm">
-                Fedlex, Swiss Parliament API, opendata.swiss, cantonal gazettes, Federal Chancellery publications.
+                European Parliament API, EUR-Lex, national parliamentary APIs (Bundestag, Assemblée nationale, Camera dei Deputati, etc.), Wikipedia, official government gazettes.
               </div>
               <div className="px-3 py-2 brutalist-border-b bg-secondary font-mono text-xs font-bold">
                 TIER 2 — Primary External Evidence
