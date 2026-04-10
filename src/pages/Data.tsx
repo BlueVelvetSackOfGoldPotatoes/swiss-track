@@ -279,6 +279,55 @@ function useDataStats() {
       const withSideIncome = finances.filter((f: any) => (f.side_income || 0) > 0);
       const totalInvestmentValue = invData.reduce((s: number, inv: any) => s + (inv.estimated_value || 0), 0);
 
+      // === Political orientation data ===
+      const positions = positionsData.data || [];
+      
+      // Ideology distribution
+      const ideologyCounts: Record<string, number> = {};
+      positions.forEach((p: any) => {
+        const label = p.ideology_label || 'Unknown';
+        ideologyCounts[label] = (ideologyCounts[label] || 0) + 1;
+      });
+      const byIdeology = Object.entries(ideologyCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+      // Economic vs Social scatter (sampled for performance)
+      const compassSample = positions
+        .filter((_: any, i: number) => i % 3 === 0) // sample every 3rd
+        .map((p: any) => ({
+          x: Number(p.economic_score),
+          y: Number(p.social_score),
+          ideology: p.ideology_label || 'Unknown',
+        }));
+
+      // Average policy priorities across all politicians
+      const avgPriorities = positions.length > 0 ? [
+        { domain: 'Education', value: parseFloat((positions.reduce((s: number, p: any) => s + Number(p.education_priority), 0) / positions.length).toFixed(1)) },
+        { domain: 'Science', value: parseFloat((positions.reduce((s: number, p: any) => s + Number(p.science_priority), 0) / positions.length).toFixed(1)) },
+        { domain: 'Healthcare', value: parseFloat((positions.reduce((s: number, p: any) => s + Number(p.healthcare_priority), 0) / positions.length).toFixed(1)) },
+        { domain: 'Defense', value: parseFloat((positions.reduce((s: number, p: any) => s + Number(p.defense_priority), 0) / positions.length).toFixed(1)) },
+        { domain: 'Economy', value: parseFloat((positions.reduce((s: number, p: any) => s + Number(p.economy_priority), 0) / positions.length).toFixed(1)) },
+        { domain: 'Justice', value: parseFloat((positions.reduce((s: number, p: any) => s + Number(p.justice_priority), 0) / positions.length).toFixed(1)) },
+        { domain: 'Social Welfare', value: parseFloat((positions.reduce((s: number, p: any) => s + Number(p.social_welfare_priority), 0) / positions.length).toFixed(1)) },
+        { domain: 'Environment', value: parseFloat((positions.reduce((s: number, p: any) => s + Number(p.environment_priority), 0) / positions.length).toFixed(1)) },
+      ] : [];
+
+      // EU integration distribution
+      const euBuckets = [
+        { range: 'Strong Eurosceptic', min: -10, max: -5, count: 0 },
+        { range: 'Eurosceptic', min: -5, max: -1, count: 0 },
+        { range: 'Neutral', min: -1, max: 1, count: 0 },
+        { range: 'Pro-EU', min: 1, max: 5, count: 0 },
+        { range: 'Strong Pro-EU', min: 5, max: 10.1, count: 0 },
+      ];
+      positions.forEach((p: any) => {
+        const v = Number(p.eu_integration_score);
+        const bucket = euBuckets.find(b => v >= b.min && v < b.max);
+        if (bucket) bucket.count++;
+      });
+      const euDistribution = euBuckets.map(b => ({ name: b.range, count: b.count }));
+
       return {
         totalPoliticians: politicians.count || 0,
         totalEvents: events.count || 0,
@@ -305,6 +354,12 @@ function useDataStats() {
         totalInvestmentValue,
         totalInvestments: invData.length,
         politiciansWithInvestments: new Set(invData.map((i: any) => i.politician_id)).size,
+        // Political orientation
+        byIdeology,
+        compassSample,
+        avgPriorities,
+        euDistribution,
+        totalPositions: positions.length,
       };
     },
   });
