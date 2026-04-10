@@ -1077,27 +1077,32 @@ const Data = () => {
         {/* Data Sources */}
         <section>
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">DATA SOURCES</h2>
-          <div className="grid sm:grid-cols-4 gap-3">
-            <div className="brutalist-border p-4 bg-card">
+          <div className="grid sm:grid-cols-5 gap-3">
+            <a href="https://www.europarl.europa.eu" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
               <div className="text-sm font-bold">European Parliament</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">718 MEPs · XML directory</div>
-              <div className="text-xs text-accent mt-2">europarl.europa.eu</div>
-            </div>
-            <div className="brutalist-border p-4 bg-card">
+              <div className="text-xs text-accent mt-2">europarl.europa.eu →</div>
+            </a>
+            <a href="https://en.wikipedia.org" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
               <div className="text-sm font-bold">Wikipedia</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">{stats.enriched} enriched · REST API</div>
-              <div className="text-xs text-accent mt-2">en.wikipedia.org</div>
-            </div>
-            <div className="brutalist-border p-4 bg-card">
+              <div className="text-xs text-accent mt-2">en.wikipedia.org →</div>
+            </a>
+            <a href="https://www.europarl.europa.eu/meps/en/declarations" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
               <div className="text-sm font-bold">Financial Disclosures</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">{stats.totalInvestments} positions tracked</div>
-              <div className="text-xs text-accent mt-2">Declarations of interest</div>
-            </div>
-            <div className="brutalist-border p-4 bg-card">
+              <div className="text-xs text-accent mt-2">Declarations of interest →</div>
+            </a>
+            <a href="https://ec.europa.eu" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
               <div className="text-sm font-bold">Public RSS Feeds</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">{stats.totalEvents} events · EU sources</div>
-              <div className="text-xs text-accent mt-2">ec.europa.eu</div>
-            </div>
+              <div className="text-xs text-accent mt-2">ec.europa.eu →</div>
+            </a>
+            <a href="https://eur-lex.europa.eu" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
+              <div className="text-sm font-bold">Legislative Tracker</div>
+              <div className="text-xs font-mono text-muted-foreground mt-1">{stats.totalProposals} proposals · {stats.proposalCountries} countries</div>
+              <div className="text-xs text-accent mt-2">EUR-Lex + national sources →</div>
+            </a>
           </div>
         </section>
       </main>
