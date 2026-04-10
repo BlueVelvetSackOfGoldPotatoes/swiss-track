@@ -540,6 +540,52 @@ function useDataStats() {
       });
       const euDistribution = euBuckets.map(b => ({ name: b.range, count: b.count }));
 
+      // === Data Availability / Transparency Gap ===
+      const allPols = fullPoliticians.data || [];
+      const financeIds = new Set(finances.map((f: any) => f.politician_id));
+      const investIds = new Set(invData.map((i: any) => i.politician_id));
+      const positionIds = new Set((positionsData.data || []).map((p: any) => p.politician_id || ''));
+      
+      const availByCountry: Record<string, { total: number; bio: number; photo: number; wiki: number; enriched: number; finance: number; invest: number; position: number; birth: number; twitter: number }> = {};
+      allPols.forEach((p: any) => {
+        const key = p.country_code;
+        if (!availByCountry[key]) availByCountry[key] = { total: 0, bio: 0, photo: 0, wiki: 0, enriched: 0, finance: 0, invest: 0, position: 0, birth: 0, twitter: 0 };
+        const a = availByCountry[key];
+        a.total++;
+        if (p.biography) a.bio++;
+        if (p.photo_url) a.photo++;
+        if (p.wikipedia_url) a.wiki++;
+        if (p.enriched_at) a.enriched++;
+        if (p.birth_year) a.birth++;
+        if (p.twitter_handle) a.twitter++;
+        if (financeIds.has(p.id)) a.finance++;
+        if (investIds.has(p.id)) a.invest++;
+      });
+      
+      const dataAvailability = Object.entries(availByCountry)
+        .filter(([code]) => EU_COUNTRY_DATA[code])
+        .map(([code, a]) => {
+          const fields = [a.bio, a.photo, a.wiki, a.enriched, a.finance, a.birth];
+          const avgCompleteness = a.total > 0 ? fields.reduce((s, v) => s + v / a.total, 0) / fields.length * 100 : 0;
+          const gapScore = 100 - avgCompleteness;
+          return {
+            code,
+            name: byCountry.find(c => c.code === code)?.name || code,
+            total: a.total,
+            bioRate: a.total > 0 ? Math.round((a.bio / a.total) * 100) : 0,
+            photoRate: a.total > 0 ? Math.round((a.photo / a.total) * 100) : 0,
+            wikiRate: a.total > 0 ? Math.round((a.wiki / a.total) * 100) : 0,
+            financeRate: a.total > 0 ? Math.round((a.finance / a.total) * 100) : 0,
+            investRate: a.total > 0 ? Math.round((a.invest / a.total) * 100) : 0,
+            enrichedRate: a.total > 0 ? Math.round((a.enriched / a.total) * 100) : 0,
+            birthRate: a.total > 0 ? Math.round((a.birth / a.total) * 100) : 0,
+            twitterRate: a.total > 0 ? Math.round((a.twitter / a.total) * 100) : 0,
+            completeness: Math.round(avgCompleteness),
+            gap: Math.round(gapScore),
+          };
+        })
+        .sort((a, b) => b.gap - a.gap);
+
       // === Proposal data ===
       const proposals = proposalsData.data || [];
       const proposalsByCountry: Record<string, { code: string; name: string; count: number }> = {};
