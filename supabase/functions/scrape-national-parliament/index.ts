@@ -16,33 +16,33 @@ const PARLIAMENT_CONFIG: Record<string, {
   countryName: string;
 }> = {
   PT: {
-    categories: ["Members of the 16th Assembleia da República"],
+    categories: ["Members of the Assembly of the Republic (Portugal)", "Portuguese politicians"],
     parliament: "Assembleia da República",
     role: "Member of Parliament",
     countryName: "Portugal",
   },
   DE: {
-    categories: ["Members of the 20th Bundestag"],
+    categories: ["Members of the Bundestag 2021–2025"],
     parliament: "Bundestag",
     role: "Member of Bundestag",
     countryName: "Germany",
   },
   FR: {
-    categories: ["Deputies of the 17th National Assembly of France"],
+    categories: ["Deputies of the 17th National Assembly of the French Fifth Republic"],
     parliament: "Assemblée nationale",
     role: "Member of National Assembly",
     countryName: "France",
   },
   IT: {
-    categories: ["Members of the Chamber of Deputies (Italy), 2022–2027"],
-    parliament: "Camera dei Deputati",
-    role: "Member of Chamber of Deputies",
+    categories: ["Deputies of Legislature XIX of Italy", "Senators of Legislature XIX of Italy"],
+    parliament: "Parlamento italiano",
+    role: "Member of Parliament",
     countryName: "Italy",
   },
   ES: {
     categories: ["Members of the 15th Congress of Deputies (Spain)"],
     parliament: "Congreso de los Diputados",
-    role: "Member of Congress of Deputies",
+    role: "Member of Congress",
     countryName: "Spain",
   },
   PL: {
@@ -51,14 +51,8 @@ const PARLIAMENT_CONFIG: Record<string, {
     role: "Member of Sejm",
     countryName: "Poland",
   },
-  RO: {
-    categories: ["Members of the Chamber of Deputies (Romania), 2024–2028"],
-    parliament: "Camera Deputaților",
-    role: "Member of Chamber of Deputies",
-    countryName: "Romania",
-  },
   NL: {
-    categories: ["Members of the House of Representatives (Netherlands)"],
+    categories: ["Dutch MPs 2025–present"],
     parliament: "Tweede Kamer",
     role: "Member of House of Representatives",
     countryName: "Netherlands",
@@ -73,10 +67,10 @@ const PARLIAMENT_CONFIG: Record<string, {
     categories: ["Members of the Chamber of Deputies of the Czech Republic (2021–2025)"],
     parliament: "Poslanecká sněmovna",
     role: "Member of Chamber of Deputies",
-    countryName: "Czech Republic",
+    countryName: "Czechia",
   },
   GR: {
-    categories: ["Greek MPs 2023–2027"],
+    categories: ["Greek MPs 2023–"],
     parliament: "Hellenic Parliament",
     role: "Member of Hellenic Parliament",
     countryName: "Greece",
@@ -94,31 +88,31 @@ const PARLIAMENT_CONFIG: Record<string, {
     countryName: "Hungary",
   },
   AT: {
-    categories: ["Members of the Austrian National Council (2024–)"],
+    categories: ["Members of the 28th National Council (Austria)"],
     parliament: "Nationalrat",
     role: "Member of National Council",
     countryName: "Austria",
   },
   BG: {
-    categories: ["Members of the 51st National Assembly of Bulgaria"],
+    categories: ["Members of the National Assembly (Bulgaria)"],
     parliament: "National Assembly",
     role: "Member of National Assembly",
     countryName: "Bulgaria",
   },
   DK: {
-    categories: ["Members of the Folketing 2022–2026"],
+    categories: ["Members of the Folketing"],
     parliament: "Folketing",
     role: "Member of Folketing",
     countryName: "Denmark",
   },
   FI: {
-    categories: ["Members of the 2023–2027 Finnish Parliament"],
+    categories: ["Members of the Parliament of Finland (2023–2027)"],
     parliament: "Eduskunta",
     role: "Member of Parliament",
     countryName: "Finland",
   },
   SK: {
-    categories: ["Members of the National Council (Slovakia) 2023-2027"],
+    categories: ["Members of the National Council (Slovakia) 2023–2027"],
     parliament: "Národná rada",
     role: "Member of National Council",
     countryName: "Slovakia",
@@ -129,35 +123,17 @@ const PARLIAMENT_CONFIG: Record<string, {
     role: "Teachta Dála",
     countryName: "Ireland",
   },
-  HR: {
-    categories: ["Representatives in the 11th term of the Croatian Parliament"],
-    parliament: "Sabor",
-    role: "Member of Sabor",
-    countryName: "Croatia",
-  },
-  LT: {
-    categories: ["Members of the 2024–2028 Seimas"],
-    parliament: "Seimas",
-    role: "Member of Seimas",
-    countryName: "Lithuania",
-  },
   SI: {
-    categories: ["Members of the 9th National Assembly (Slovenia)"],
+    categories: ["Members of the 9th National Assembly of Slovenia"],
     parliament: "Državni zbor",
     role: "Member of National Assembly",
     countryName: "Slovenia",
   },
   LV: {
-    categories: ["Members of the 14th Saeima"],
+    categories: ["Deputies of the 14th Saeima"],
     parliament: "Saeima",
     role: "Member of Saeima",
     countryName: "Latvia",
-  },
-  EE: {
-    categories: ["Members of the 15th Riigikogu"],
-    parliament: "Riigikogu",
-    role: "Member of Riigikogu",
-    countryName: "Estonia",
   },
   CY: {
     categories: ["Members of the House of Representatives (Cyprus)"],
@@ -170,12 +146,6 @@ const PARLIAMENT_CONFIG: Record<string, {
     parliament: "Chambre des Députés",
     role: "Member of Chamber of Deputies",
     countryName: "Luxembourg",
-  },
-  MT: {
-    categories: ["Members of the 14th Maltese legislature"],
-    parliament: "House of Representatives",
-    role: "Member of House of Representatives",
-    countryName: "Malta",
   },
 };
 
