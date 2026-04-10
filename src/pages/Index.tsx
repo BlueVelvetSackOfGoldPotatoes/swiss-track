@@ -16,12 +16,12 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
-      <main className="container flex-1 py-8">
-        <div className="mb-8">
+      <main className="container flex-1 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8">
           <SearchBar />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 sm:gap-8">
           <div>
             <div className="flex items-baseline justify-between mb-4 brutalist-border-b pb-2">
               <h2 className="text-lg font-extrabold tracking-tight">RECENTLY ADDED</h2>
@@ -29,7 +29,7 @@ const Index = () => {
                 {actors.length} politicians
               </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {actors.slice(0, 12).map((a) => (
                 <ActorCard key={a.id} actor={a} />
               ))}
