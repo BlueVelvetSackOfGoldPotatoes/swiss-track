@@ -442,6 +442,69 @@ export type Database = {
         }
         Relationships: []
       }
+      proposals: {
+        Row: {
+          affected_laws: string[] | null
+          country_code: string
+          country_name: string
+          created_at: string
+          evidence_count: number | null
+          id: string
+          jurisdiction: string
+          official_title: string | null
+          policy_area: string | null
+          proposal_type: string
+          source_url: string | null
+          sponsors: string[] | null
+          status: string
+          submitted_date: string
+          summary: string | null
+          title: string
+          updated_at: string
+          vote_date: string | null
+        }
+        Insert: {
+          affected_laws?: string[] | null
+          country_code?: string
+          country_name?: string
+          created_at?: string
+          evidence_count?: number | null
+          id?: string
+          jurisdiction?: string
+          official_title?: string | null
+          policy_area?: string | null
+          proposal_type?: string
+          source_url?: string | null
+          sponsors?: string[] | null
+          status?: string
+          submitted_date?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          vote_date?: string | null
+        }
+        Update: {
+          affected_laws?: string[] | null
+          country_code?: string
+          country_name?: string
+          created_at?: string
+          evidence_count?: number | null
+          id?: string
+          jurisdiction?: string
+          official_title?: string | null
+          policy_area?: string | null
+          proposal_type?: string
+          source_url?: string | null
+          sponsors?: string[] | null
+          status?: string
+          submitted_date?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          vote_date?: string | null
+        }
+        Relationships: []
+      }
       scrape_runs: {
         Row: {
           completed_at: string | null
