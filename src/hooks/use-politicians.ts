@@ -88,6 +88,64 @@ export function usePolitician(id: string | undefined) {
   });
 }
 
+export interface PoliticianFinance {
+  annual_salary: number | null;
+  currency: string;
+  side_income: number | null;
+  declared_assets: number | null;
+  property_value: number | null;
+  declared_debt: number | null;
+  salary_source: string | null;
+  declaration_year: number;
+}
+
+export interface PoliticianInvestment {
+  id: string;
+  company_name: string;
+  sector: string | null;
+  investment_type: string;
+  estimated_value: number | null;
+  currency: string;
+  is_active: boolean;
+  notes: string | null;
+}
+
+export function usePoliticianFinances(politicianId: string | undefined) {
+  return useQuery({
+    queryKey: ['politician-finances', politicianId],
+    queryFn: async () => {
+      if (!politicianId) return null;
+      const { data, error } = await supabase
+        .from('politician_finances')
+        .select('*')
+        .eq('politician_id', politicianId)
+        .order('declaration_year', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as PoliticianFinance | null;
+    },
+    enabled: !!politicianId,
+  });
+}
+
+export function usePoliticianInvestments(politicianId: string | undefined) {
+  return useQuery({
+    queryKey: ['politician-investments', politicianId],
+    queryFn: async () => {
+      if (!politicianId) return [];
+      const { data, error } = await supabase
+        .from('politician_investments')
+        .select('*')
+        .eq('politician_id', politicianId)
+        .order('estimated_value', { ascending: false });
+      if (error) throw error;
+      return (data || []) as PoliticianInvestment[];
+    },
+    enabled: !!politicianId,
+  });
+}
+
 export function usePoliticianEvents(politicianId: string | undefined) {
   return useQuery({
     queryKey: ['politician-events', politicianId],
