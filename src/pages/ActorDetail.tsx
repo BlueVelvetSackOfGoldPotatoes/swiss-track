@@ -4,10 +4,13 @@ import SiteFooter from '@/components/SiteFooter';
 import ActorTimeline from '@/components/ActorTimeline';
 import ActorCharts from '@/components/ActorCharts';
 import { usePolitician, usePoliticianEvents, usePoliticianFinances, usePoliticianInvestments, usePoliticianPosition, useAllPositions, usePoliticianAssociates } from '@/hooks/use-politicians';
-import { ExternalLink, TrendingUp, Building2, Briefcase, DollarSign, Compass, Users, Globe, Handshake } from 'lucide-react';
+import { useProposalsByCountry } from '@/hooks/use-proposals';
+import { statusLabels, statusColors } from '@/hooks/use-proposals';
+import { ExternalLink, TrendingUp, Building2, Briefcase, DollarSign, Compass, Users, Globe, Handshake, FileText } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { PoliticalCompassChart, IdeologyLegend } from '@/components/PoliticalCompass';
 import { PolicyRadarChart, PoliticalAxesBar, KeyPositionsList } from '@/components/PolicyRadar';
+import { SourceBadge, ProvenanceBar } from '@/components/SourceBadge';
 import { Link as RouterLink } from 'react-router-dom';
 
 const SECTOR_COLORS: Record<string, string> = {
@@ -34,6 +37,8 @@ const ActorDetail = () => {
   const { data: position } = usePoliticianPosition(id);
   const { data: allPositions = [] } = useAllPositions();
   const { data: associates = [] } = usePoliticianAssociates(id);
+  const countryCode = actor?.countryId?.toUpperCase();
+  const { data: countryProposals = [] } = useProposalsByCountry(countryCode);
 
   if (isLoading) {
     return (
@@ -74,6 +79,14 @@ const ActorDetail = () => {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
+  // Map key_positions topics to policy areas for linking proposals
+  const stanceToArea: Record<string, string> = {
+    eu_integration: 'governance', climate_policy: 'environment', immigration: 'justice',
+    nuclear_energy: 'energy', education_spending: 'economy', defense_spending: 'defense',
+    healthcare: 'healthcare', social_welfare: 'social_welfare', digital_regulation: 'technology',
+    tax_policy: 'finance',
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
@@ -102,6 +115,10 @@ const ActorDetail = () => {
               {actor.wikipediaData?.description && (
                 <p className="text-xs text-muted-foreground mt-1 italic">{actor.wikipediaData.description}</p>
               )}
+              <ProvenanceBar sources={[
+                ...(actor.wikipediaUrl ? [{ label: 'Wikipedia', url: actor.wikipediaUrl, type: 'official' as const }] : []),
+                ...(actor.enrichedAt ? [{ label: `Enriched ${new Date(actor.enrichedAt).toLocaleDateString()}`, type: 'fact' as const }] : []),
+              ]} />
             </div>
           </div>
         </div>
@@ -117,12 +134,9 @@ const ActorDetail = () => {
                 </h2>
                 <div className="brutalist-border p-4 bg-secondary/30">
                   <p className="text-sm leading-relaxed">{actor.wikipediaSummary}</p>
-                  {actor.wikipediaUrl && (
-                    <a href={actor.wikipediaUrl} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-mono text-accent hover:underline mt-3">
-                      <ExternalLink className="w-3 h-3" /> Read full article on Wikipedia
-                    </a>
-                  )}
+                  <ProvenanceBar sources={[
+                    { label: 'Wikipedia', url: actor.wikipediaUrl, type: 'official' },
+                  ]} />
                 </div>
               </section>
             )}
@@ -141,6 +155,10 @@ const ActorDetail = () => {
                 {/* Political Axes */}
                 <div className="brutalist-border p-4 bg-secondary/30 mb-4">
                   <PoliticalAxesBar position={position as any} />
+                  <ProvenanceBar sources={[
+                    { label: 'Chapel Hill Expert Survey methodology', type: 'model' },
+                    { label: 'Party family mapping', type: 'estimate' },
+                  ]} />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -152,7 +170,10 @@ const ActorDetail = () => {
 
                   {/* Compass position in context */}
                   <div className="brutalist-border p-3 bg-card">
-                    <p className="text-[10px] font-mono font-bold text-muted-foreground text-center mb-1">POLITICAL COMPASS</p>
+                    <p className="text-[10px] font-mono font-bold text-muted-foreground text-center mb-1">
+                      POLITICAL COMPASS
+                      <span className="ml-1 text-primary">● = THIS POLITICIAN</span>
+                    </p>
                     <PoliticalCompassChart
                       positions={allPositions}
                       highlightId={id}
@@ -161,11 +182,46 @@ const ActorDetail = () => {
                   </div>
                 </div>
 
-                {/* Key policy positions */}
+                {/* Key policy positions + linked proposals */}
                 {position.key_positions && Object.keys(position.key_positions).length > 0 && (
                   <div className="brutalist-border p-4 bg-card">
                     <p className="text-[10px] font-mono font-bold text-muted-foreground mb-2">KEY POLICY STANCES</p>
                     <KeyPositionsList positions={position.key_positions as Record<string, string>} />
+                    
+                    {/* Related proposals from this politician's country */}
+                    {countryProposals.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-border">
+                        <p className="text-[10px] font-mono font-bold text-muted-foreground mb-2 flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          RELATED LEGISLATION ({countryCode})
+                        </p>
+                        <div className="space-y-1.5">
+                          {countryProposals.slice(0, 6).map(p => (
+                            <RouterLink
+                              key={p.id}
+                              to={`/proposals/${p.id}`}
+                              className="flex items-center gap-2 text-xs font-mono hover:bg-muted/50 px-2 py-1.5 rounded transition-colors"
+                            >
+                              <span className={`px-1 py-0.5 rounded text-[9px] ${statusColors[p.status] || 'bg-muted'}`}>
+                                {statusLabels[p.status] || p.status.toUpperCase()}
+                              </span>
+                              <span className="truncate flex-1">{p.title}</span>
+                              {p.policy_area && (
+                                <span className="text-[9px] text-muted-foreground">{p.policy_area.replace(/_/g, ' ')}</span>
+                              )}
+                            </RouterLink>
+                          ))}
+                          <RouterLink to={`/proposals?country=${countryCode}`} className="text-[10px] font-mono text-accent hover:underline block mt-1">
+                            View all {countryCode} proposals →
+                          </RouterLink>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <ProvenanceBar sources={[
+                      { label: 'Party platform analysis', type: 'model' },
+                      { label: 'Voting record inference', type: 'estimate' },
+                    ]} />
                   </div>
                 )}
 
@@ -181,7 +237,6 @@ const ActorDetail = () => {
                   CLOSE ASSOCIATES · {associates.length} connections
                 </h2>
 
-                {/* Group by type */}
                 {(() => {
                   const domestic = associates.filter(a => a.is_domestic);
                   const international = associates.filter(a => !a.is_domestic);
@@ -232,29 +287,36 @@ const ActorDetail = () => {
                   );
 
                   return (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {domestic.length > 0 && (
-                        <div className="brutalist-border bg-card p-3">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <Handshake className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[10px] font-mono font-bold text-muted-foreground">DOMESTIC ({domestic.length})</span>
+                    <div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {domestic.length > 0 && (
+                          <div className="brutalist-border bg-card p-3">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <Handshake className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-[10px] font-mono font-bold text-muted-foreground">DOMESTIC ({domestic.length})</span>
+                            </div>
+                            <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
+                              {domestic.map(renderAssociate)}
+                            </div>
                           </div>
-                          <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
-                            {domestic.map(renderAssociate)}
+                        )}
+                        {international.length > 0 && (
+                          <div className="brutalist-border bg-card p-3">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <Globe className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-[10px] font-mono font-bold text-muted-foreground">INTERNATIONAL ({international.length})</span>
+                            </div>
+                            <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
+                              {international.map(renderAssociate)}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {international.length > 0 && (
-                        <div className="brutalist-border bg-card p-3">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <Globe className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[10px] font-mono font-bold text-muted-foreground">INTERNATIONAL ({international.length})</span>
-                          </div>
-                          <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
-                            {international.map(renderAssociate)}
-                          </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                      <ProvenanceBar sources={[
+                        { label: 'EP group membership', type: 'official' },
+                        { label: 'Committee co-membership', type: 'fact' },
+                        { label: 'Coalition analysis', type: 'model' },
+                      ]} />
                     </div>
                   );
                 })()}
@@ -286,9 +348,11 @@ const ActorDetail = () => {
                     <div className="text-[10px] font-mono text-muted-foreground uppercase">Property</div>
                   </div>
                 </div>
-                {finances.salary_source && (
-                  <p className="text-xs font-mono text-muted-foreground">Source: {finances.salary_source}</p>
-                )}
+                <ProvenanceBar sources={[
+                  ...(finances.salary_source ? [{ label: finances.salary_source, type: 'official' as const }] : []),
+                  { label: 'Financial declarations', type: 'official' },
+                  { label: `Declaration year ${finances.declaration_year}`, type: 'fact' },
+                ]} />
               </section>
             )}
 
@@ -352,6 +416,10 @@ const ActorDetail = () => {
                     </div>
                   )}
                 </div>
+                <ProvenanceBar sources={[
+                  { label: 'Declarations of financial interests', type: 'official' },
+                  { label: 'EP transparency register', url: 'https://www.europarl.europa.eu/meps/en/declarations', type: 'official' },
+                ]} />
               </section>
             )}
 
@@ -425,6 +493,7 @@ const ActorDetail = () => {
                     </div>
                   ))}
                 </div>
+                <ProvenanceBar sources={[{ label: 'Wikipedia infobox', url: actor.wikipediaUrl, type: 'official' }]} />
               </div>
             )}
 
@@ -436,13 +505,16 @@ const ActorDetail = () => {
                     <div key={c} className="font-mono text-xs bg-secondary px-2 py-1.5 brutalist-border">{c}</div>
                   ))}
                 </div>
+                <ProvenanceBar sources={[{ label: 'EP committee assignments', url: 'https://www.europarl.europa.eu/committees/en/home', type: 'official' }]} />
               </div>
             )}
 
             {actor.twitterHandle && (
               <div className="brutalist-border p-4">
                 <h3 className="font-mono text-xs font-bold mb-2">SOCIAL MEDIA</h3>
-                <div className="font-mono text-sm text-sky-600 dark:text-sky-400">{actor.twitterHandle}</div>
+                <a href={`https://x.com/${actor.twitterHandle?.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1">
+                  <ExternalLink className="w-3 h-3" /> {actor.twitterHandle}
+                </a>
               </div>
             )}
 
@@ -456,6 +528,10 @@ const ActorDetail = () => {
                 <div className="flex justify-between font-mono text-xs">
                   <span>Investments disclosed</span>
                   <span className="font-bold">{investments.length}</span>
+                </div>
+                <div className="flex justify-between font-mono text-xs">
+                  <span>Country proposals</span>
+                  <span className="font-bold">{countryProposals.length}</span>
                 </div>
                 <div className="flex justify-between font-mono text-xs">
                   <span>Wikipedia enriched</span>
