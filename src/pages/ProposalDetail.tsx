@@ -3,6 +3,7 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { useProposal, statusLabels, statusColors } from '@/hooks/use-proposals';
 import { ExternalLink } from 'lucide-react';
+import { ProvenanceBar } from '@/components/SourceBadge';
 
 const ProposalDetail = () => {
   const { id } = useParams();
@@ -64,7 +65,10 @@ const ProposalDetail = () => {
           <section className="mb-6">
             <h2 className="text-xs font-mono font-bold text-muted-foreground mb-2">SUMMARY</h2>
             <p className="text-sm leading-relaxed">{proposal.summary}</p>
-            <span className="evidence-fact mt-2 inline-block">FACT · official source</span>
+            <ProvenanceBar sources={[
+              ...(proposal.source_url ? [{ label: 'Official source', url: proposal.source_url, type: 'official' as const }] : []),
+              { label: 'Legislative record', type: 'fact' as const },
+            ]} />
           </section>
         )}
 
