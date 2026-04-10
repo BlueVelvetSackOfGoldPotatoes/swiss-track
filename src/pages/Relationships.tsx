@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
-import { relationships, mockActors, parties, partyFamilies, countries, getCountry } from '@/data/mockData';
+import { usePoliticians, useCountryStats, useAllPositions } from '@/hooks/use-politicians';
+import { IDEOLOGY_COLORS } from '@/components/PoliticalCompass';
+import { ProvenanceBar } from '@/components/SourceBadge';
 
 type ViewMode = 'clusters' | 'connections' | 'tree';
 
@@ -16,11 +18,10 @@ const Relationships = () => {
         <div className="brutalist-border-b pb-2 mb-6">
           <h2 className="text-lg font-extrabold tracking-tight">RELATIONSHIPS</h2>
           <p className="text-xs font-mono text-muted-foreground mt-1">
-            Explore connections between politicians, parties, and countries.
+            Explore connections between politicians, parties, and countries across the EU.
           </p>
         </div>
 
-        {/* View toggle */}
         <div className="flex gap-0 mb-6">
           {(['clusters', 'connections', 'tree'] as ViewMode[]).map(v => (
             <button
@@ -45,177 +46,220 @@ const Relationships = () => {
 };
 
 const ClustersView = () => {
-  const families = Object.entries(partyFamilies);
+  const { data: positions = [] } = useAllPositions();
+  const { data: politicians = [] } = usePoliticians();
+
+  // Group by ideology_label
+  const clusters = new Map<string, Array<{ name: string; id: string; party: string; country: string; economic: number; social: number }>>();
+  for (const pos of positions) {
+    const label = (pos as any).ideology_label || 'Unclassified';
+    if (!clusters.has(label)) clusters.set(label, []);
+    clusters.get(label)!.push({
+      name: (pos as any).name || 'Unknown',
+      id: pos.politician_id,
+      party: (pos as any).party || '',
+      country: (pos as any).country || '',
+      economic: Number(pos.economic_score),
+      social: Number(pos.social_score),
+    });
+  }
+
+  const sortedClusters = Array.from(clusters.entries()).sort((a, b) => b[1].length - a[1].length);
 
   return (
     <div className="space-y-6">
       <p className="font-mono text-xs text-muted-foreground mb-4">
-        Parties grouped by ideological family across countries.
+        Politicians grouped by ideological family based on party mapping and expert survey data. {positions.length} politicians mapped.
       </p>
-      {families.map(([famId, famName]) => {
-        const familyParties = parties.filter(p => p.familyId === famId);
-        if (familyParties.length === 0) return null;
+      {sortedClusters.map(([label, members]) => {
+        const color = IDEOLOGY_COLORS[label] || 'hsl(0, 0%, 55%)';
+        const avgEcon = members.reduce((s, m) => s + m.economic, 0) / members.length;
+        const avgSocial = members.reduce((s, m) => s + m.social, 0) / members.length;
+        const countries = new Set(members.map(m => m.country));
+        const parties = new Set(members.map(m => m.party).filter(Boolean));
 
         return (
-          <div key={famId} className="brutalist-border p-4">
-            <h3 className="font-extrabold text-sm mb-3">{famName.toUpperCase()}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {familyParties.map(party => {
-                const country = getCountry(party.countryId);
-                const partyActors = mockActors.filter(a => a.partyId === party.id);
-                return (
-                  <div key={party.id} className="brutalist-border p-3 hover:bg-secondary/50 transition-colors">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: party.color }} />
-                      <span className="font-mono text-sm font-bold">{party.abbreviation}</span>
-                      <span className="evidence-tag text-xs">{country?.code}</span>
-                    </div>
-                    <p className="font-mono text-xs text-muted-foreground mb-2">{party.name}</p>
-                    {partyActors.length > 0 && (
-                      <div className="space-y-1">
-                        {partyActors.map(a => (
-                          <Link key={a.id} to={`/actors/${a.id}`} className="block font-mono text-xs hover:underline">
-                            → {a.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+          <div key={label} className="brutalist-border p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+              <h3 className="font-extrabold text-sm">{label.toUpperCase()}</h3>
+              <span className="evidence-tag">{members.length} politicians</span>
+              <span className="evidence-tag">{countries.size} countries</span>
+              <span className="evidence-tag">{parties.size} parties</span>
             </div>
-
-            {/* Cross-party alignment lines */}
-            {familyParties.length > 1 && (
-              <div className="mt-3 brutalist-border-t pt-2">
-                <div className="font-mono text-xs text-muted-foreground">
-                  Ideological cluster: {familyParties.map(p => p.abbreviation).join(' ↔ ')}
+            <div className="flex gap-4 mb-3 font-mono text-xs text-muted-foreground">
+              <span>Avg economic: <strong className="text-foreground">{avgEcon.toFixed(1)}</strong></span>
+              <span>Avg social: <strong className="text-foreground">{avgSocial.toFixed(1)}</strong></span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {members.slice(0, 12).map(m => (
+                <Link
+                  key={m.id}
+                  to={`/actors/${m.id}`}
+                  className="flex items-center gap-2 p-2 rounded hover:bg-muted/50 transition-colors font-mono text-xs"
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                  <span className="font-medium truncate">{m.name}</span>
+                  {m.party && <span className="text-muted-foreground">{m.party}</span>}
+                  <span className="evidence-tag text-[9px] ml-auto">{m.country}</span>
+                </Link>
+              ))}
+              {members.length > 12 && (
+                <div className="text-xs font-mono text-muted-foreground p-2">
+                  +{members.length - 12} more politicians
                 </div>
-                {relationships
-                  .filter(r =>
-                    r.type === 'ideological_alignment' &&
-                    r.sourceType === 'party' &&
-                    familyParties.some(p => p.id === r.sourceId) &&
-                    familyParties.some(p => p.id === r.targetId)
-                  )
-                  .map(r => (
-                    <div key={r.id} className="font-mono text-xs text-muted-foreground mt-1">
-                      {parties.find(p => p.id === r.sourceId)?.abbreviation} ↔{' '}
-                      {parties.find(p => p.id === r.targetId)?.abbreviation}:{' '}
-                      {Math.round(r.strength * 100)}% alignment — {r.description}
-                    </div>
-                  ))}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         );
       })}
+      <ProvenanceBar sources={[
+        { label: 'Chapel Hill Expert Survey', url: 'https://www.chesdata.eu/', type: 'model' },
+        { label: 'Party family mapping', type: 'estimate' },
+      ]} />
     </div>
   );
 };
 
 const ConnectionsView = () => {
-  const actorRelations = relationships.filter(r => r.sourceType === 'actor' && r.targetType === 'actor');
+  const { data: politicians = [] } = usePoliticians();
+
+  // Group politicians by party to show cross-country party connections
+  const partyGroups = new Map<string, typeof politicians>();
+  for (const p of politicians) {
+    if (!p.party) continue;
+    if (!partyGroups.has(p.party)) partyGroups.set(p.party, []);
+    partyGroups.get(p.party)!.push(p);
+  }
+
+  // Only show parties with members in multiple countries
+  const crossBorderParties = Array.from(partyGroups.entries())
+    .map(([party, members]) => {
+      const countries = new Set(members.map(m => m.countryId.toUpperCase()));
+      return { party, members, countries };
+    })
+    .filter(g => g.countries.size > 1 || g.members.length > 3)
+    .sort((a, b) => b.members.length - a.members.length);
+
+  // Also show country-to-country links
+  const countryLinks = new Map<string, { countries: Set<string>; politicians: number }>();
+  for (const p of politicians) {
+    const key = p.countryId.toUpperCase();
+    if (!countryLinks.has(key)) countryLinks.set(key, { countries: new Set(), politicians: 0 });
+    countryLinks.get(key)!.politicians++;
+  }
 
   return (
     <div>
       <p className="font-mono text-xs text-muted-foreground mb-4">
-        Direct connections between politicians across borders.
+        Cross-border party connections and multi-country political networks. {crossBorderParties.length} party groups spanning multiple countries.
       </p>
       <div className="space-y-3">
-        {actorRelations.map(rel => {
-          const source = mockActors.find(a => a.id === rel.sourceId);
-          const target = mockActors.find(a => a.id === rel.targetId);
-          if (!source || !target) return null;
-          const srcCountry = getCountry(source.countryId);
-          const tgtCountry = getCountry(target.countryId);
-
-          return (
-            <div key={rel.id} className="brutalist-border p-4 hover:bg-secondary/50 transition-colors">
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <Link to={`/actors/${source.id}`} className="font-mono text-sm font-bold hover:underline">
-                  {source.name}
-                </Link>
-                <span className="evidence-tag text-xs">{srcCountry?.code}</span>
-
-                <span className="font-mono text-xs px-2 py-0.5 brutalist-border bg-secondary">
-                  {rel.type.replace(/_/g, ' ').toUpperCase()}
-                </span>
-
-                <Link to={`/actors/${target.id}`} className="font-mono text-sm font-bold hover:underline">
-                  {target.name}
-                </Link>
-                <span className="evidence-tag text-xs">{tgtCountry?.code}</span>
+        {crossBorderParties.slice(0, 20).map(({ party, members, countries }) => (
+          <div key={party} className="brutalist-border p-4 hover:bg-secondary/50 transition-colors">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
+              <span className="font-mono text-sm font-bold">{party}</span>
+              <span className="evidence-tag">{members.length} members</span>
+              <span className="evidence-tag">{countries.size} countries</span>
+              <div className="flex gap-1">
+                {Array.from(countries).map(c => (
+                  <Link key={c} to={`/country/${c.toLowerCase()}`} className="evidence-tag text-[9px] hover:underline">{c}</Link>
+                ))}
               </div>
+            </div>
 
-              {/* Strength bar */}
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex-1 h-1.5 bg-secondary brutalist-border">
-                  <div
-                    className="h-full bg-primary"
-                    style={{ width: `${rel.strength * 100}%` }}
-                  />
-                </div>
-                <span className="font-mono text-xs text-muted-foreground">{Math.round(rel.strength * 100)}%</span>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex-1 h-1.5 bg-secondary brutalist-border">
+                <div
+                  className="h-full bg-primary"
+                  style={{ width: `${Math.min((members.length / 20) * 100, 100)}%` }}
+                />
               </div>
+              <span className="font-mono text-xs text-muted-foreground">{members.length} politicians</span>
+            </div>
 
-              <p className="text-xs text-muted-foreground">{rel.description}</p>
-              {rel.since && (
-                <span className="font-mono text-xs text-muted-foreground mt-1 block">
-                  since {new Date(rel.since).toLocaleDateString()}
-                </span>
+            <div className="flex flex-wrap gap-1">
+              {members.slice(0, 6).map(m => (
+                <Link key={m.id} to={`/actors/${m.id}`} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted hover:bg-primary/10 transition-colors">
+                  {m.name} ({m.countryId.toUpperCase()})
+                </Link>
+              ))}
+              {members.length > 6 && (
+                <span className="text-[10px] font-mono text-muted-foreground px-1.5 py-0.5">+{members.length - 6} more</span>
               )}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
+      <ProvenanceBar sources={[
+        { label: 'EP group membership', url: 'https://www.europarl.europa.eu/meps/en/home', type: 'official' },
+        { label: 'Party affiliation records', type: 'fact' },
+      ]} />
     </div>
   );
 };
 
 const TreeView = () => {
+  const { data: politicians = [] } = usePoliticians();
+  const { data: countryStats = [] } = useCountryStats();
+
+  // Group by continent → country → party → politician
+  const continentMap = new Map<string, Map<string, { name: string; code: string; parties: Map<string, typeof politicians> }>>();
+
+  for (const p of politicians) {
+    const continent = 'Europe'; // All EU politicians are in Europe
+    if (!continentMap.has(continent)) continentMap.set(continent, new Map());
+    const countryMap = continentMap.get(continent)!;
+    const cc = p.countryId.toUpperCase();
+    if (!countryMap.has(cc)) {
+      const stat = countryStats.find(s => s.code === cc);
+      countryMap.set(cc, { name: stat?.name || cc, code: cc, parties: new Map() });
+    }
+    const country = countryMap.get(cc)!;
+    const partyKey = p.party || 'Independent';
+    if (!country.parties.has(partyKey)) country.parties.set(partyKey, []);
+    country.parties.get(partyKey)!.push(p);
+  }
+
   return (
     <div>
       <p className="font-mono text-xs text-muted-foreground mb-4">
-        Hierarchical view: Continent → Country → Party → Actor.
+        Hierarchical view: Continent → Country → Party → Politician. {politicians.length} politicians across {countryStats.length} countries.
       </p>
       <div className="space-y-4">
-        {(['cont-eu', 'cont-na', 'cont-sa', 'cont-as'] as string[]).map(contId => {
-          const cont = { 'cont-eu': 'Europe', 'cont-na': 'North America', 'cont-sa': 'South America', 'cont-as': 'Asia' }[contId];
-          const contCountries = countries.filter(c => c.continentId === contId);
-          const hasActors = contCountries.some(c => mockActors.some(a => a.countryId === c.id));
-          if (!hasActors) return null;
-
-          return (
-            <div key={contId} className="brutalist-border">
-              <div className="bg-primary text-primary-foreground px-4 py-2 font-mono text-xs font-bold">
-                {cont?.toUpperCase()}
-              </div>
-              {contCountries.map(country => {
-                const countryActors = mockActors.filter(a => a.countryId === country.id);
-                if (countryActors.length === 0) return null;
-                const countryParties = parties.filter(p => p.countryId === country.id);
-
+        {Array.from(continentMap.entries()).map(([continent, countryMap]) => (
+          <div key={continent} className="brutalist-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2 font-mono text-xs font-bold">
+              {continent.toUpperCase()} · {countryMap.size} COUNTRIES
+            </div>
+            {Array.from(countryMap.entries())
+              .sort((a, b) => {
+                const aCount = Array.from(a[1].parties.values()).reduce((s, p) => s + p.length, 0);
+                const bCount = Array.from(b[1].parties.values()).reduce((s, p) => s + p.length, 0);
+                return bCount - aCount;
+              })
+              .map(([cc, country]) => {
+                const totalActors = Array.from(country.parties.values()).reduce((s, p) => s + p.length, 0);
                 return (
-                  <div key={country.id} className="brutalist-border-b last:border-b-0">
+                  <div key={cc} className="brutalist-border-b last:border-b-0">
                     <div className="px-4 py-2 bg-secondary font-mono text-xs font-bold flex items-center gap-2">
                       <span className="text-muted-foreground">├─</span>
-                      <Link to={`/country/${country.id}`} className="hover:underline">
-                        {country.code} {country.name}
+                      <Link to={`/country/${cc.toLowerCase()}`} className="hover:underline">
+                        {cc} {country.name}
                       </Link>
+                      <span className="evidence-tag text-[9px]">{totalActors} politicians</span>
+                      <span className="evidence-tag text-[9px]">{country.parties.size} parties</span>
                     </div>
-                    {countryParties.map(party => {
-                      const pActors = countryActors.filter(a => a.partyId === party.id);
-                      if (pActors.length === 0) return null;
-                      return (
-                        <div key={party.id}>
+                    {Array.from(country.parties.entries())
+                      .sort((a, b) => b[1].length - a[1].length)
+                      .map(([partyName, members]) => (
+                        <div key={partyName}>
                           <div className="px-4 py-1.5 font-mono text-xs flex items-center gap-2">
                             <span className="text-muted-foreground">│ ├─</span>
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: party.color }} />
-                            <span className="font-bold">{party.abbreviation}</span>
-                            <span className="text-muted-foreground">{party.ideology}</span>
+                            <span className="font-bold">{partyName}</span>
+                            <span className="text-muted-foreground">{members.length} members</span>
                           </div>
-                          {pActors.map(actor => (
+                          {members.slice(0, 5).map(actor => (
                             <div key={actor.id} className="px-4 py-1 font-mono text-xs flex items-center gap-2">
                               <span className="text-muted-foreground">│ │ └─</span>
                               <Link to={`/actors/${actor.id}`} className="hover:underline">
@@ -224,16 +268,23 @@ const TreeView = () => {
                               <span className="text-muted-foreground">{actor.role}</span>
                             </div>
                           ))}
+                          {members.length > 5 && (
+                            <div className="px-4 py-1 font-mono text-[10px] text-muted-foreground">
+                              │ │ &nbsp;&nbsp; +{members.length - 5} more
+                            </div>
+                          )}
                         </div>
-                      );
-                    })}
+                      ))}
                   </div>
                 );
               })}
-            </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
+      <ProvenanceBar sources={[
+        { label: 'EU Parliament records', url: 'https://www.europarl.europa.eu/', type: 'official' },
+        { label: 'National parliament APIs', type: 'official' },
+      ]} />
     </div>
   );
 };
