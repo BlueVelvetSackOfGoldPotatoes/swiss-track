@@ -7,7 +7,6 @@ const corsHeaders = {
 
 const TWITTER_API = "https://api.x.com/2";
 
-// Use Web Crypto API for HMAC-SHA1
 async function hmacSha1(key: string, data: string): Promise<string> {
   const encoder = new TextEncoder();
   const cryptoKey = await crypto.subtle.importKey(
@@ -16,8 +15,6 @@ async function hmacSha1(key: string, data: string): Promise<string> {
   const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(data));
   return btoa(String.fromCharCode(...new Uint8Array(signature)));
 }
-
-const TWITTER_API = "https://api.x.com/2";
 
 async function generateOAuthHeader(
   method: string,
@@ -50,7 +47,6 @@ async function generateOAuthHeader(
   const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(accessTokenSecret)}`;
 
   const signature = await hmacSha1(signingKey, baseString);
-
   oauthParams.oauth_signature = signature;
 
   const headerParts = Object.keys(oauthParams)
@@ -97,7 +93,6 @@ Deno.serve(async (req) => {
   let eventsCreated = 0;
 
   try {
-    // Get all politicians with twitter handles
     const { data: politicians } = await supabase
       .from("politicians")
       .select("id, name, twitter_handle")
@@ -165,7 +160,6 @@ Deno.serve(async (req) => {
         totalTweets += tweets.length;
 
         for (const tweet of tweets) {
-          // Simple sentiment analysis based on keywords
           const text = tweet.text.toLowerCase();
           let sentiment: "positive" | "negative" | "neutral" = "neutral";
           const positiveWords = ["great", "proud", "success", "support", "progress", "celebrate", "win", "passed"];
@@ -174,7 +168,6 @@ Deno.serve(async (req) => {
           if (positiveWords.some((w) => text.includes(w))) sentiment = "positive";
           else if (negativeWords.some((w) => text.includes(w))) sentiment = "negative";
 
-          // Extract entities (hashtags, mentions)
           const entities: string[] = [];
           if (tweet.entities?.hashtags) {
             entities.push(...tweet.entities.hashtags.map((h: any) => `#${h.tag}`));
@@ -200,27 +193,23 @@ Deno.serve(async (req) => {
           eventsCreated++;
         }
 
-        // Rate limit: 1 req/sec
         await new Promise((r) => setTimeout(r, 1500));
       } catch (e) {
         console.error(`Error processing ${handle}:`, e);
       }
     }
 
-    await supabase
-      .from("scrape_runs")
-      .update({
-        status: "completed",
-        records_fetched: totalTweets,
-        records_created: eventsCreated,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
+    await supabase.from("scrape_runs").update({
+      status: "completed",
+      records_fetched: totalTweets,
+      records_created: eventsCreated,
+      completed_at: new Date().toISOString(),
+    }).eq("id", runId);
 
-    await supabase
-      .from("data_sources")
-      .update({ last_synced_at: new Date().toISOString(), total_records: totalTweets })
-      .eq("source_type", "twitter");
+    await supabase.from("data_sources").update({
+      last_synced_at: new Date().toISOString(),
+      total_records: totalTweets,
+    }).eq("source_type", "twitter");
 
     return new Response(
       JSON.stringify({ success: true, tweets_fetched: totalTweets, events_created: eventsCreated }),
@@ -229,14 +218,11 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Twitter scrape error:", error);
     if (runId) {
-      await supabase
-        .from("scrape_runs")
-        .update({
-          status: "failed",
-          error_message: error instanceof Error ? error.message : String(error),
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", runId);
+      await supabase.from("scrape_runs").update({
+        status: "failed",
+        error_message: error instanceof Error ? error.message : String(error),
+        completed_at: new Date().toISOString(),
+      }).eq("id", runId);
     }
 
     return new Response(
