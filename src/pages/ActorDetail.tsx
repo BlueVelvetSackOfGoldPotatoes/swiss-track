@@ -87,6 +87,14 @@ const ActorDetail = () => {
     tax_policy: 'finance',
   };
 
+  // Ensure current politician is always in the compass positions list
+  const compassPositions = (() => {
+    if (!position) return allPositions;
+    const hasCurrentPolitician = allPositions.some((p: any) => p.politician_id === id);
+    if (hasCurrentPolitician) return allPositions;
+    return [...allPositions, { ...position, politician_id: id, name: actor.name }];
+  })();
+
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
@@ -156,7 +164,7 @@ const ActorDetail = () => {
                 <div className="brutalist-border p-4 bg-secondary/30 mb-4">
                   <PoliticalAxesBar position={position as any} />
                   <ProvenanceBar sources={[
-                    { label: 'Chapel Hill Expert Survey methodology', type: 'model' },
+                    { label: 'Chapel Hill Expert Survey', url: 'https://www.chesdata.eu/', type: 'model' },
                     { label: 'Party family mapping', type: 'estimate' },
                   ]} />
                 </div>
@@ -166,6 +174,9 @@ const ActorDetail = () => {
                   <div className="brutalist-border p-3 bg-card">
                     <p className="text-[10px] font-mono font-bold text-muted-foreground text-center mb-1">POLICY PRIORITIES</p>
                     <PolicyRadarChart position={position as any} height={250} />
+                    <ProvenanceBar sources={[
+                      { label: 'Chapel Hill Expert Survey', url: 'https://www.chesdata.eu/', type: 'model' },
+                    ]} />
                   </div>
 
                   {/* Compass position in context */}
@@ -175,10 +186,14 @@ const ActorDetail = () => {
                       <span className="ml-1 text-primary">● = THIS POLITICIAN</span>
                     </p>
                     <PoliticalCompassChart
-                      positions={allPositions}
+                      positions={compassPositions}
                       highlightId={id}
                       height={250}
                     />
+                    <ProvenanceBar sources={[
+                      { label: 'Chapel Hill Expert Survey', url: 'https://www.chesdata.eu/', type: 'model' },
+                      { label: 'Party family mapping', type: 'estimate' },
+                    ]} />
                   </div>
                 </div>
 
@@ -221,6 +236,7 @@ const ActorDetail = () => {
                     <ProvenanceBar sources={[
                       { label: 'Party platform analysis', type: 'model' },
                       { label: 'Voting record inference', type: 'estimate' },
+                      ...(countryProposals.length > 0 ? [{ label: 'EUR-Lex / National parliament', url: 'https://eur-lex.europa.eu/', type: 'official' as const }] : []),
                     ]} />
                   </div>
                 )}
@@ -313,7 +329,7 @@ const ActorDetail = () => {
                         )}
                       </div>
                       <ProvenanceBar sources={[
-                        { label: 'EP group membership', type: 'official' },
+                        { label: 'EP group membership', url: 'https://www.europarl.europa.eu/meps/en/home', type: 'official' },
                         { label: 'Committee co-membership', type: 'fact' },
                         { label: 'Coalition analysis', type: 'model' },
                       ]} />
@@ -334,23 +350,27 @@ const ActorDetail = () => {
                   <div className="brutalist-border p-3 bg-card">
                     <div className="text-lg font-extrabold tracking-tighter">{formatCurrency(finances.annual_salary)}</div>
                     <div className="text-[10px] font-mono text-muted-foreground uppercase">Annual Salary</div>
+                    <SourceBadge label={finances.salary_source || 'Official record'} type="official" />
                   </div>
                   <div className="brutalist-border p-3 bg-card">
                     <div className="text-lg font-extrabold tracking-tighter">{formatCurrency(finances.side_income)}</div>
                     <div className="text-[10px] font-mono text-muted-foreground uppercase">Side Income</div>
+                    <SourceBadge label="Declaration" type="official" />
                   </div>
                   <div className="brutalist-border p-3 bg-card">
                     <div className="text-lg font-extrabold tracking-tighter">{formatCurrency(finances.declared_assets)}</div>
                     <div className="text-[10px] font-mono text-muted-foreground uppercase">Declared Assets</div>
+                    <SourceBadge label="Declaration" type="official" />
                   </div>
                   <div className="brutalist-border p-3 bg-card">
                     <div className="text-lg font-extrabold tracking-tighter">{formatCurrency(finances.property_value)}</div>
                     <div className="text-[10px] font-mono text-muted-foreground uppercase">Property</div>
+                    <SourceBadge label="Declaration" type="official" />
                   </div>
                 </div>
                 <ProvenanceBar sources={[
                   ...(finances.salary_source ? [{ label: finances.salary_source, type: 'official' as const }] : []),
-                  { label: 'Financial declarations', type: 'official' },
+                  { label: 'EP transparency register', url: 'https://www.europarl.europa.eu/meps/en/declarations', type: 'official' },
                   { label: `Declaration year ${finances.declaration_year}`, type: 'fact' },
                 ]} />
               </section>
@@ -431,6 +451,10 @@ const ActorDetail = () => {
                     ANALYTICS
                   </h2>
                   <ActorCharts events={events} />
+                  <ProvenanceBar sources={[
+                    { label: 'Aggregated event data', type: 'fact' },
+                    ...(actor.wikipediaUrl ? [{ label: 'Wikipedia', url: actor.wikipediaUrl, type: 'official' as const }] : []),
+                  ]} />
                 </section>
                 <section className="mb-8">
                   <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
@@ -438,6 +462,10 @@ const ActorDetail = () => {
                     PROVENANCE LOG
                   </h2>
                   <ActorTimeline events={events} />
+                  <ProvenanceBar sources={[
+                    { label: 'Multi-source event tracking', type: 'fact' },
+                    { label: 'EU Parliament records', url: 'https://www.europarl.europa.eu/', type: 'official' },
+                  ]} />
                 </section>
               </>
             )}
@@ -478,6 +506,9 @@ const ActorDetail = () => {
                     </div>
                   )}
                 </div>
+                <ProvenanceBar sources={[
+                  { label: 'Financial declarations', type: 'official' },
+                ]} />
               </div>
             )}
 
@@ -515,6 +546,9 @@ const ActorDetail = () => {
                 <a href={`https://x.com/${actor.twitterHandle?.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1">
                   <ExternalLink className="w-3 h-3" /> {actor.twitterHandle}
                 </a>
+                <ProvenanceBar sources={[
+                  { label: 'X / Twitter', url: `https://x.com/${actor.twitterHandle?.replace('@', '')}`, type: 'official' },
+                ]} />
               </div>
             )}
 
@@ -538,6 +572,10 @@ const ActorDetail = () => {
                   <span className="font-bold">{actor.enrichedAt ? '✓' : '—'}</span>
                 </div>
               </div>
+              <ProvenanceBar sources={[
+                { label: 'Platform aggregation', type: 'fact' },
+                ...(actor.wikipediaUrl ? [{ label: 'Wikipedia', url: actor.wikipediaUrl, type: 'official' as const }] : []),
+              ]} />
             </div>
 
             <div className="font-mono text-xs text-muted-foreground space-y-1">
