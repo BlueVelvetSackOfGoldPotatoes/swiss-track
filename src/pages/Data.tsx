@@ -218,6 +218,66 @@ function useDataStats() {
         })
         .sort((a, b) => b.gdpPerPolitician - a.gdpPerPolitician);
 
+      // === Financial data analysis ===
+      const finances = financesData.data || [];
+      const invData = investmentsData.data || [];
+
+      // Salary distribution buckets
+      const salaryBuckets = [
+        { range: '< €80K', min: 0, max: 80000, count: 0 },
+        { range: '€80-120K', min: 80000, max: 120000, count: 0 },
+        { range: '€120-150K', min: 120000, max: 150000, count: 0 },
+        { range: '€150-200K', min: 150000, max: 200000, count: 0 },
+        { range: '> €200K', min: 200000, max: Infinity, count: 0 },
+      ];
+      finances.forEach((f: any) => {
+        if (!f.annual_salary) return;
+        const bucket = salaryBuckets.find(b => f.annual_salary >= b.min && f.annual_salary < b.max);
+        if (bucket) bucket.count++;
+      });
+      const salaryDistribution = salaryBuckets.map(b => ({ name: b.range, count: b.count }));
+
+      // Investment sectors
+      const sectorTotals: Record<string, { value: number; count: number }> = {};
+      invData.forEach((inv: any) => {
+        const s = inv.sector || 'Other';
+        if (!sectorTotals[s]) sectorTotals[s] = { value: 0, count: 0 };
+        sectorTotals[s].value += inv.estimated_value || 0;
+        sectorTotals[s].count++;
+      });
+      const bySector = Object.entries(sectorTotals)
+        .map(([name, { value, count }]) => ({ name, value: Math.round(value), count }))
+        .sort((a, b) => b.value - a.value);
+
+      // Top invested companies
+      const companyTotals: Record<string, { value: number; count: number; sector: string }> = {};
+      invData.forEach((inv: any) => {
+        const c = inv.company_name;
+        if (!companyTotals[c]) companyTotals[c] = { value: 0, count: 0, sector: inv.sector || '' };
+        companyTotals[c].value += inv.estimated_value || 0;
+        companyTotals[c].count++;
+      });
+      const topCompanies = Object.entries(companyTotals)
+        .map(([name, { value, count, sector }]) => ({ name, value: Math.round(value), investors: count, sector }))
+        .sort((a, b) => b.investors - a.investors)
+        .slice(0, 15);
+
+      // Average salary by source (EP vs National)
+      const salaryBySource: Record<string, { total: number; count: number }> = {};
+      finances.forEach((f: any) => {
+        const src = f.salary_source || 'Unknown';
+        if (!salaryBySource[src]) salaryBySource[src] = { total: 0, count: 0 };
+        salaryBySource[src].total += f.annual_salary || 0;
+        salaryBySource[src].count++;
+      });
+      const avgSalaryBySource = Object.entries(salaryBySource)
+        .map(([name, { total, count }]) => ({ name, avgSalary: Math.round(total / count), count }))
+        .sort((a, b) => b.avgSalary - a.avgSalary);
+
+      // Side income stats
+      const withSideIncome = finances.filter((f: any) => (f.side_income || 0) > 0);
+      const totalInvestmentValue = invData.reduce((s: number, inv: any) => s + (inv.estimated_value || 0), 0);
+
       return {
         totalPoliticians: politicians.count || 0,
         totalEvents: events.count || 0,
@@ -234,6 +294,16 @@ function useDataStats() {
         scatterData,
         representationIndex,
         gdpPerPol,
+        // Financial
+        salaryDistribution,
+        bySector,
+        topCompanies,
+        avgSalaryBySource,
+        sideIncomeCount: withSideIncome.length,
+        sideIncomePct: finances.length > 0 ? Math.round((withSideIncome.length / finances.length) * 100) : 0,
+        totalInvestmentValue,
+        totalInvestments: invData.length,
+        politiciansWithInvestments: new Set(invData.map((i: any) => i.politician_id)).size,
       };
     },
   });
