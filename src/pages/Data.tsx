@@ -989,6 +989,91 @@ const Data = () => {
           </div>
         </section>
 
+        {/* === LEGISLATIVE TRACKER === */}
+        <div className="brutalist-border-b pb-2 mt-4">
+          <h2 className="text-xl font-extrabold tracking-tighter font-mono">📜 LEGISLATIVE TRACKER</h2>
+          <p className="text-xs font-mono text-muted-foreground mt-1">
+            {stats.totalProposals} proposals across {stats.proposalCountries} jurisdictions
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Total Proposals" value={stats.totalProposals} />
+          <StatCard label="Countries" value={stats.proposalCountries} />
+          <StatCard label="Adopted" value={stats.proposalsByStatus.find((s: any) => s.name === 'Adopted')?.count || 0} />
+          <StatCard label="Policy Areas" value={stats.proposalsByArea.length} />
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">PROPOSALS BY COUNTRY</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Legislative activity per jurisdiction</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={stats.proposalsByCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="code" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">BY STATUS</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Current legislative status of tracked proposals</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={stats.proposalsByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={80} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">BY POLICY AREA</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Distribution of proposals across policy domains</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={stats.proposalsByArea} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={100} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">BY TYPE</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Directives, regulations, bills, referendums</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={350}>
+                <PieChart>
+                  <Pie data={stats.proposalsByType} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={120} label={renderCustomLabel} labelLine={false}>
+                    {stats.proposalsByType.map((_: any, i: number) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </div>
+
         {/* Data Sources */}
         <section>
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">DATA SOURCES</h2>
