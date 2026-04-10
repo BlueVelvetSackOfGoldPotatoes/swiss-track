@@ -5,7 +5,43 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const EU_API = "https://data.europarl.europa.eu/api/v2";
+// Country name to ISO code mapping for EU member states
+const COUNTRY_CODES: Record<string, string> = {
+  "Austria": "AT", "Belgium": "BE", "Bulgaria": "BG", "Croatia": "HR",
+  "Cyprus": "CY", "Czech Republic": "CZ", "Czechia": "CZ",
+  "Denmark": "DK", "Estonia": "EE", "Finland": "FI", "France": "FR",
+  "Germany": "DE", "Greece": "GR", "Hungary": "HU", "Ireland": "IE",
+  "Italy": "IT", "Latvia": "LV", "Lithuania": "LT", "Luxembourg": "LU",
+  "Malta": "MT", "Netherlands": "NL", "Poland": "PL", "Portugal": "PT",
+  "Romania": "RO", "Slovakia": "SK", "Slovenia": "SI", "Spain": "ES",
+  "Sweden": "SE",
+};
+
+interface MepEntry {
+  fullName: string;
+  country: string;
+  politicalGroup: string;
+  nationalPoliticalGroup: string;
+  id: string;
+}
+
+function parseXmlMeps(xml: string): MepEntry[] {
+  const meps: MepEntry[] = [];
+  const mepBlocks = xml.split("</mep>");
+
+  for (const block of mepBlocks) {
+    const fullName = block.match(/<fullName>(.*?)<\/fullName>/)?.[1];
+    const country = block.match(/<country>(.*?)<\/country>/)?.[1];
+    const politicalGroup = block.match(/<politicalGroup>(.*?)<\/politicalGroup>/)?.[1];
+    const nationalPoliticalGroup = block.match(/<nationalPoliticalGroup>(.*?)<\/nationalPoliticalGroup>/)?.[1];
+    const id = block.match(/<id>(.*?)<\/id>/)?.[1];
+
+    if (fullName && id) {
+      meps.push({ fullName, country: country || "", politicalGroup: politicalGroup || "", nationalPoliticalGroup: nationalPoliticalGroup || "", id });
+    }
+  }
+  return meps;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -13,11 +49,11 @@ Deno.serve(async (req) => {
   }
 
   let offset = 0;
-  let limit = 10;
+  let batchSize = 100;
   try {
     const body = await req.json();
     offset = body.offset || 0;
-    limit = Math.min(body.limit || 10, 20);
+    batchSize = Math.min(body.batchSize || 100, 200);
   } catch { /* defaults */ }
 
   const supabase = createClient(
@@ -31,94 +67,80 @@ Deno.serve(async (req) => {
     .select()
     .single();
   const runId = run?.id;
-  let recordsFetched = 0;
-  let recordsCreated = 0;
-  let recordsUpdated = 0;
 
   try {
-    // Use JSON format (much smaller than JSON-LD)
-    const url = `${EU_API}/meps/show-current?format=application%2Fld%2Bjson&offset=${offset}&limit=${limit}`;
-    console.log(`Fetching MEPs: offset=${offset} limit=${limit}`);
-    
-    const mepsRes = await fetch(url, {
-      headers: { Accept: "application/ld+json" },
-      signal: AbortSignal.timeout(40000),
+    // Fast XML endpoint — returns all 718 current MEPs in ~0.1s
+    console.log("Fetching current MEPs from EP XML directory...");
+    const res = await fetch("https://www.europarl.europa.eu/meps/en/full-list/xml", {
+      signal: AbortSignal.timeout(15000),
     });
 
-    if (!mepsRes.ok) {
-      throw new Error(`EU API returned ${mepsRes.status}`);
-    }
+    if (!res.ok) throw new Error(`EP XML endpoint returned ${res.status}`);
 
-    const mepsData = await mepsRes.json();
-    const mepRefs = mepsData?.data || mepsData?.["hydra:member"] || [];
-    recordsFetched = mepRefs.length;
-    console.log(`Got ${mepRefs.length} MEP references`);
+    const xml = await res.text();
+    const allMeps = parseXmlMeps(xml);
+    console.log(`Parsed ${allMeps.length} MEPs from XML`);
 
-    for (const ref of mepRefs) {
-      const externalId = ref.identifier || ref.notation || ref["@id"]?.split("/").pop();
-      if (!externalId) continue;
+    // Process a batch (to stay within edge function time limits)
+    const batch = allMeps.slice(offset, offset + batchSize);
+    let created = 0, updated = 0;
 
-      let name = ref.label || ref.prefLabel || "";
-      if (!name && (ref.givenName || ref.familyName)) {
-        name = `${ref.givenName || ""} ${ref.familyName || ""}`.trim();
-      }
-      if (!name) name = `MEP ${externalId}`;
-
-      let countryCode = "";
-      const countryField = ref.countryOfRepresentation || ref.country_of_representation || "";
-      if (typeof countryField === "string" && countryField.includes("/")) {
-        countryCode = countryField.split("/").pop() || "";
-      } else if (typeof countryField === "string") {
-        countryCode = countryField;
-      }
+    for (const mep of batch) {
+      const countryCode = COUNTRY_CODES[mep.country] || "EU";
 
       const { data: existing } = await supabase
         .from("politicians")
         .select("id")
-        .eq("external_id", String(externalId))
+        .eq("external_id", mep.id)
         .maybeSingle();
 
       const record = {
-        external_id: String(externalId),
-        name,
-        country_code: countryCode || "EU",
-        country_name: countryCode || "European Union",
+        external_id: mep.id,
+        name: mep.fullName,
+        country_code: countryCode,
+        country_name: mep.country || "European Union",
         role: "Member of European Parliament",
         jurisdiction: "eu",
         continent: "Europe",
+        party_name: mep.politicalGroup || null,
+        party_abbreviation: mep.nationalPoliticalGroup || null,
         data_source: "eu_parliament" as const,
-        source_url: `https://www.europarl.europa.eu/meps/en/${externalId}`,
-        photo_url: ref.img || ref.image || null,
+        source_url: `https://www.europarl.europa.eu/meps/en/${mep.id}`,
+        photo_url: `https://www.europarl.europa.eu/mepphoto/${mep.id}.jpg`,
       };
 
       if (existing) {
         await supabase.from("politicians").update(record).eq("id", existing.id);
-        recordsUpdated++;
+        updated++;
       } else {
         await supabase.from("politicians").insert(record);
-        recordsCreated++;
+        created++;
       }
     }
 
+    const hasMore = offset + batchSize < allMeps.length;
+
     await supabase.from("scrape_runs").update({
       status: "completed",
-      records_fetched: recordsFetched,
-      records_created: recordsCreated,
-      records_updated: recordsUpdated,
+      records_fetched: allMeps.length,
+      records_created: created,
+      records_updated: updated,
       completed_at: new Date().toISOString(),
     }).eq("id", runId);
 
     await supabase.from("data_sources").update({
       last_synced_at: new Date().toISOString(),
-      total_records: recordsFetched,
+      total_records: allMeps.length,
     }).eq("source_type", "eu_parliament");
 
     return new Response(JSON.stringify({
       success: true,
-      meps_found: recordsFetched,
-      created: recordsCreated,
-      updated: recordsUpdated,
-      next_offset: mepRefs.length === limit ? offset + limit : null,
+      total_meps: allMeps.length,
+      batch_processed: batch.length,
+      created,
+      updated,
+      next_offset: hasMore ? offset + batchSize : null,
+      has_more: hasMore,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error) {
