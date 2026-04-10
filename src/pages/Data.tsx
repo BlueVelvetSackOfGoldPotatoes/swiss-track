@@ -330,6 +330,20 @@ function useDataStats() {
       });
       const euDistribution = euBuckets.map(b => ({ name: b.range, count: b.count }));
 
+      // === Proposal data ===
+      const proposals = proposalsData.data || [];
+      const proposalsByCountry: Record<string, { code: string; name: string; count: number }> = {};
+      const proposalsByStatus: Record<string, number> = {};
+      const proposalsByArea: Record<string, number> = {};
+      const proposalsByType: Record<string, number> = {};
+      proposals.forEach((p: any) => {
+        if (!proposalsByCountry[p.country_code]) proposalsByCountry[p.country_code] = { code: p.country_code, name: p.country_name, count: 0 };
+        proposalsByCountry[p.country_code].count++;
+        proposalsByStatus[p.status] = (proposalsByStatus[p.status] || 0) + 1;
+        if (p.policy_area) proposalsByArea[p.policy_area] = (proposalsByArea[p.policy_area] || 0) + 1;
+        proposalsByType[p.proposal_type] = (proposalsByType[p.proposal_type] || 0) + 1;
+      });
+
       return {
         totalPoliticians: politicians.count || 0,
         totalEvents: events.count || 0,
@@ -362,6 +376,13 @@ function useDataStats() {
         avgPriorities,
         euDistribution,
         totalPositions: positions.length,
+        // Proposals
+        totalProposals: proposals.length,
+        proposalsByCountry: Object.values(proposalsByCountry).sort((a, b) => b.count - a.count),
+        proposalsByStatus: Object.entries(proposalsByStatus).map(([name, count]) => ({ name: name.replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
+        proposalsByArea: Object.entries(proposalsByArea).map(([name, count]) => ({ name: name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
+        proposalsByType: Object.entries(proposalsByType).map(([name, count]) => ({ name: name.replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
+        proposalCountries: Object.keys(proposalsByCountry).length,
       };
     },
   });
