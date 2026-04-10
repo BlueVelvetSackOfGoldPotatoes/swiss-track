@@ -1,4 +1,4 @@
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell, Label } from 'recharts';
 
 export interface PoliticalPosition {
   id: string;
@@ -42,53 +42,82 @@ interface CompassProps {
 }
 
 export function PoliticalCompassChart({ positions, highlightId, height = 400 }: CompassProps) {
-  const data = positions.map(p => ({
-    x: p.economic_score,
-    y: p.social_score,
-    name: p.name || p.politician_id.slice(0, 8),
-    ideology: p.ideology_label || 'Unknown',
-    id: p.politician_id,
-  }));
+  // Split into background and highlighted point
+  const bgData = positions
+    .filter(p => !highlightId || p.politician_id !== highlightId)
+    .map(p => ({
+      x: Number(p.economic_score),
+      y: Number(p.social_score),
+      name: p.name || p.politician_id.slice(0, 8),
+      ideology: p.ideology_label || 'Unknown',
+      id: p.politician_id,
+    }));
+
+  const highlighted = highlightId
+    ? positions.filter(p => p.politician_id === highlightId).map(p => ({
+        x: Number(p.economic_score),
+        y: Number(p.social_score),
+        name: p.name || p.politician_id.slice(0, 8),
+        ideology: p.ideology_label || 'Unknown',
+        id: p.politician_id,
+      }))
+    : [];
+
+  const renderTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.[0]) return null;
+    const d = payload[0].payload;
+    return (
+      <div className="brutalist-border bg-card p-2 text-xs font-mono shadow-lg">
+        <div className="font-bold">{d.name}</div>
+        <div className="text-muted-foreground">{d.ideology}</div>
+        <div>Econ: {d.x} · Social: {d.y}</div>
+      </div>
+    );
+  };
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ScatterChart margin={{ top: 20, right: 20, bottom: 30, left: 20 }}>
+      <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 30 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-        <XAxis
-          type="number" dataKey="x" domain={[-10, 10]} name="Economic"
-          tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))"
-          label={{ value: '← Left — Economic — Right →', position: 'bottom', fontSize: 10, fontFamily: 'monospace', fill: 'hsl(var(--muted-foreground))' }}
-        />
-        <YAxis
-          type="number" dataKey="y" domain={[-10, 10]} name="Social"
-          tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))"
-          label={{ value: '← Liberal — Social — Auth →', angle: -90, position: 'left', fontSize: 10, fontFamily: 'monospace', fill: 'hsl(var(--muted-foreground))' }}
-        />
+        <XAxis type="number" dataKey="x" domain={[-10, 10]} name="Economic"
+          tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))">
+          <Label value="← Left — Economic — Right →" position="bottom" offset={15} style={{ fontSize: 10, fontFamily: 'monospace', fill: 'hsl(var(--muted-foreground))' }} />
+        </XAxis>
+        <YAxis type="number" dataKey="y" domain={[-10, 10]} name="Social"
+          tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))">
+          <Label value="← Liberal — Social — Auth →" angle={-90} position="left" offset={10} style={{ fontSize: 10, fontFamily: 'monospace', fill: 'hsl(var(--muted-foreground))' }} />
+        </YAxis>
         <ReferenceLine x={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeOpacity={0.5} />
         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeOpacity={0.5} />
-        <Tooltip
-          content={({ active, payload }) => {
-            if (!active || !payload?.[0]) return null;
-            const d = payload[0].payload;
-            return (
-              <div className="brutalist-border bg-card p-2 text-xs font-mono shadow-lg">
-                <div className="font-bold">{d.name}</div>
-                <div className="text-muted-foreground">{d.ideology}</div>
-                <div>Econ: {d.x} · Social: {d.y}</div>
-              </div>
-            );
-          }}
-        />
-        <Scatter data={data}>
-          {data.map((d, i) => (
+        <Tooltip content={renderTooltip} />
+        
+        {/* Background dots */}
+        <Scatter data={bgData} shape="circle">
+          {bgData.map((d, i) => (
             <Cell
               key={i}
               fill={getIdeologyColor(d.ideology)}
-              opacity={highlightId && d.id !== highlightId ? 0.2 : 0.7}
-              r={highlightId === d.id ? 8 : 4}
+              opacity={highlightId ? 0.15 : 0.6}
+              r={3}
             />
           ))}
         </Scatter>
+
+        {/* Highlighted politician - rendered on top, larger, with stroke */}
+        {highlighted.length > 0 && (
+          <Scatter data={highlighted} shape="circle">
+            {highlighted.map((d, i) => (
+              <Cell
+                key={i}
+                fill={getIdeologyColor(d.ideology)}
+                opacity={1}
+                r={8}
+                stroke="hsl(var(--foreground))"
+                strokeWidth={2}
+              />
+            ))}
+          </Scatter>
+        )}
       </ScatterChart>
     </ResponsiveContainer>
   );

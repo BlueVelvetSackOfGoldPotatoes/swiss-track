@@ -61,7 +61,7 @@ function useDataStats() {
   return useQuery({
     queryKey: ['data-stats'],
     queryFn: async () => {
-      const [politicians, events, countryData, partyData, jurisdictionData, eventTypeData, enrichmentData, epGroupData, financesData, investmentsData, positionsData] = await Promise.all([
+      const [politicians, events, countryData, partyData, jurisdictionData, eventTypeData, enrichmentData, epGroupData, financesData, investmentsData, positionsData, proposalsData] = await Promise.all([
         supabase.from('politicians').select('id', { count: 'exact', head: true }),
         supabase.from('political_events').select('id', { count: 'exact', head: true }),
         supabase.from('politicians').select('country_name, country_code'),
@@ -73,6 +73,7 @@ function useDataStats() {
         supabase.from('politician_finances').select('politician_id, annual_salary, side_income, declared_assets, property_value, salary_source'),
         supabase.from('politician_investments').select('politician_id, company_name, sector, estimated_value, investment_type'),
         supabase.from('politician_positions').select('economic_score, social_score, ideology_label, eu_integration_score, environmental_score, immigration_score, education_priority, science_priority, healthcare_priority, defense_priority, economy_priority, justice_priority, social_welfare_priority, environment_priority'),
+        supabase.from('proposals').select('country_code, country_name, status, policy_area, proposal_type, jurisdiction'),
       ]);
 
       // Country breakdown
@@ -329,6 +330,20 @@ function useDataStats() {
       });
       const euDistribution = euBuckets.map(b => ({ name: b.range, count: b.count }));
 
+      // === Proposal data ===
+      const proposals = proposalsData.data || [];
+      const proposalsByCountry: Record<string, { code: string; name: string; count: number }> = {};
+      const proposalsByStatus: Record<string, number> = {};
+      const proposalsByArea: Record<string, number> = {};
+      const proposalsByType: Record<string, number> = {};
+      proposals.forEach((p: any) => {
+        if (!proposalsByCountry[p.country_code]) proposalsByCountry[p.country_code] = { code: p.country_code, name: p.country_name, count: 0 };
+        proposalsByCountry[p.country_code].count++;
+        proposalsByStatus[p.status] = (proposalsByStatus[p.status] || 0) + 1;
+        if (p.policy_area) proposalsByArea[p.policy_area] = (proposalsByArea[p.policy_area] || 0) + 1;
+        proposalsByType[p.proposal_type] = (proposalsByType[p.proposal_type] || 0) + 1;
+      });
+
       return {
         totalPoliticians: politicians.count || 0,
         totalEvents: events.count || 0,
@@ -361,6 +376,13 @@ function useDataStats() {
         avgPriorities,
         euDistribution,
         totalPositions: positions.length,
+        // Proposals
+        totalProposals: proposals.length,
+        proposalsByCountry: Object.values(proposalsByCountry).sort((a, b) => b.count - a.count),
+        proposalsByStatus: Object.entries(proposalsByStatus).map(([name, count]) => ({ name: name.replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
+        proposalsByArea: Object.entries(proposalsByArea).map(([name, count]) => ({ name: name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
+        proposalsByType: Object.entries(proposalsByType).map(([name, count]) => ({ name: name.replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
+        proposalCountries: Object.keys(proposalsByCountry).length,
       };
     },
   });
@@ -967,30 +989,120 @@ const Data = () => {
           </div>
         </section>
 
+        {/* === LEGISLATIVE TRACKER === */}
+        <div className="brutalist-border-b pb-2 mt-4">
+          <h2 className="text-xl font-extrabold tracking-tighter font-mono">📜 LEGISLATIVE TRACKER</h2>
+          <p className="text-xs font-mono text-muted-foreground mt-1">
+            {stats.totalProposals} proposals across {stats.proposalCountries} jurisdictions
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Total Proposals" value={stats.totalProposals} />
+          <StatCard label="Countries" value={stats.proposalCountries} />
+          <StatCard label="Adopted" value={stats.proposalsByStatus.find((s: any) => s.name === 'Adopted')?.count || 0} />
+          <StatCard label="Policy Areas" value={stats.proposalsByArea.length} />
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">PROPOSALS BY COUNTRY</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Legislative activity per jurisdiction</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={stats.proposalsByCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="code" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">BY STATUS</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Current legislative status of tracked proposals</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={stats.proposalsByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={80} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">BY POLICY AREA</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Distribution of proposals across policy domains</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={stats.proposalsByArea} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={100} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">BY TYPE</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Directives, regulations, bills, referendums</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={350}>
+                <PieChart>
+                  <Pie data={stats.proposalsByType} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={120} label={renderCustomLabel} labelLine={false}>
+                    {stats.proposalsByType.map((_: any, i: number) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </div>
+
         {/* Data Sources */}
         <section>
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">DATA SOURCES</h2>
-          <div className="grid sm:grid-cols-4 gap-3">
-            <div className="brutalist-border p-4 bg-card">
+          <div className="grid sm:grid-cols-5 gap-3">
+            <a href="https://www.europarl.europa.eu" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
               <div className="text-sm font-bold">European Parliament</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">718 MEPs · XML directory</div>
-              <div className="text-xs text-accent mt-2">europarl.europa.eu</div>
-            </div>
-            <div className="brutalist-border p-4 bg-card">
+              <div className="text-xs text-accent mt-2">europarl.europa.eu →</div>
+            </a>
+            <a href="https://en.wikipedia.org" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
               <div className="text-sm font-bold">Wikipedia</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">{stats.enriched} enriched · REST API</div>
-              <div className="text-xs text-accent mt-2">en.wikipedia.org</div>
-            </div>
-            <div className="brutalist-border p-4 bg-card">
+              <div className="text-xs text-accent mt-2">en.wikipedia.org →</div>
+            </a>
+            <a href="https://www.europarl.europa.eu/meps/en/declarations" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
               <div className="text-sm font-bold">Financial Disclosures</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">{stats.totalInvestments} positions tracked</div>
-              <div className="text-xs text-accent mt-2">Declarations of interest</div>
-            </div>
-            <div className="brutalist-border p-4 bg-card">
+              <div className="text-xs text-accent mt-2">Declarations of interest →</div>
+            </a>
+            <a href="https://ec.europa.eu" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
               <div className="text-sm font-bold">Public RSS Feeds</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">{stats.totalEvents} events · EU sources</div>
-              <div className="text-xs text-accent mt-2">ec.europa.eu</div>
-            </div>
+              <div className="text-xs text-accent mt-2">ec.europa.eu →</div>
+            </a>
+            <a href="https://eur-lex.europa.eu" target="_blank" rel="noopener noreferrer" className="brutalist-border p-4 bg-card hover:bg-secondary transition-colors">
+              <div className="text-sm font-bold">Legislative Tracker</div>
+              <div className="text-xs font-mono text-muted-foreground mt-1">{stats.totalProposals} proposals · {stats.proposalCountries} countries</div>
+              <div className="text-xs text-accent mt-2">EUR-Lex + national sources →</div>
+            </a>
           </div>
         </section>
       </main>

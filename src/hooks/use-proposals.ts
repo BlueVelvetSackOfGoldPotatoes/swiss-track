@@ -74,6 +74,42 @@ export function useProposal(id: string | undefined) {
   });
 }
 
+export function useProposalsByCountry(countryCode: string | undefined) {
+  return useQuery({
+    queryKey: ['proposals-by-country', countryCode],
+    queryFn: async () => {
+      if (!countryCode) return [];
+      const { data, error } = await supabase
+        .from('proposals')
+        .select('*')
+        .eq('country_code', countryCode.toUpperCase())
+        .order('submitted_date', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data || []) as DbProposal[];
+    },
+    enabled: !!countryCode,
+  });
+}
+
+export function useProposalsByPolicyAreas(areas: string[]) {
+  return useQuery({
+    queryKey: ['proposals-by-areas', areas],
+    queryFn: async () => {
+      if (!areas.length) return [];
+      const { data, error } = await supabase
+        .from('proposals')
+        .select('*')
+        .in('policy_area', areas)
+        .order('submitted_date', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return (data || []) as DbProposal[];
+    },
+    enabled: areas.length > 0,
+  });
+}
+
 export function useProposalStats() {
   return useQuery({
     queryKey: ['proposal-stats'],
