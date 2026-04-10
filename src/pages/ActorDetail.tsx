@@ -2,7 +2,9 @@ import { useParams, Link } from 'react-router-dom';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import ActorTimeline from '@/components/ActorTimeline';
+import ActorCharts from '@/components/ActorCharts';
 import { mockActors, getCountry, getActorEvents, relationships, parties } from '@/data/mockData';
+import { useState } from 'react';
 
 const ActorDetail = () => {
   const { id } = useParams();
@@ -54,6 +56,15 @@ const ActorDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
           {/* Main column */}
           <div>
+            {/* Charts */}
+            <section className="mb-8">
+              <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                <span className="inline-block w-3 h-3 rounded-full bg-accent" />
+                ANALYTICS
+              </h2>
+              <ActorCharts events={events} />
+            </section>
+
             {/* Stats bar */}
             <div className="brutalist-border p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-secondary">
               <div>
