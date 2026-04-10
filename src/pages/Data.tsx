@@ -265,7 +265,7 @@ function useDataStats() {
   return useQuery({
     queryKey: ['data-stats'],
     queryFn: async () => {
-      const [politicians, events, countryData, partyData, jurisdictionData, eventTypeData, enrichmentData, epGroupData, financesData, investmentsData, positionsData, proposalsData] = await Promise.all([
+      const [politicians, events, countryData, partyData, jurisdictionData, eventTypeData, enrichmentData, epGroupData, financesData, investmentsData, positionsData, proposalsData, fullPoliticians] = await Promise.all([
         supabase.from('politicians').select('id', { count: 'exact', head: true }),
         supabase.from('political_events').select('id', { count: 'exact', head: true }),
         supabase.from('politicians').select('country_name, country_code'),
@@ -278,6 +278,7 @@ function useDataStats() {
         supabase.from('politician_investments').select('politician_id, company_name, sector, estimated_value, investment_type'),
         supabase.from('politician_positions').select('economic_score, social_score, ideology_label, eu_integration_score, environmental_score, immigration_score, education_priority, science_priority, healthcare_priority, defense_priority, economy_priority, justice_priority, social_welfare_priority, environment_priority'),
         supabase.from('proposals').select('country_code, country_name, status, policy_area, proposal_type, jurisdiction'),
+        supabase.from('politicians').select('id, country_code, country_name, biography, photo_url, wikipedia_url, enriched_at, birth_year, twitter_handle'),
       ]);
 
       // Country breakdown
@@ -539,6 +540,52 @@ function useDataStats() {
       });
       const euDistribution = euBuckets.map(b => ({ name: b.range, count: b.count }));
 
+      // === Data Availability / Transparency Gap ===
+      const allPols = fullPoliticians.data || [];
+      const financeIds = new Set(finances.map((f: any) => f.politician_id));
+      const investIds = new Set(invData.map((i: any) => i.politician_id));
+      const positionIds = new Set((positionsData.data || []).map((p: any) => p.politician_id || ''));
+      
+      const availByCountry: Record<string, { total: number; bio: number; photo: number; wiki: number; enriched: number; finance: number; invest: number; position: number; birth: number; twitter: number }> = {};
+      allPols.forEach((p: any) => {
+        const key = p.country_code;
+        if (!availByCountry[key]) availByCountry[key] = { total: 0, bio: 0, photo: 0, wiki: 0, enriched: 0, finance: 0, invest: 0, position: 0, birth: 0, twitter: 0 };
+        const a = availByCountry[key];
+        a.total++;
+        if (p.biography) a.bio++;
+        if (p.photo_url) a.photo++;
+        if (p.wikipedia_url) a.wiki++;
+        if (p.enriched_at) a.enriched++;
+        if (p.birth_year) a.birth++;
+        if (p.twitter_handle) a.twitter++;
+        if (financeIds.has(p.id)) a.finance++;
+        if (investIds.has(p.id)) a.invest++;
+      });
+      
+      const dataAvailability = Object.entries(availByCountry)
+        .filter(([code]) => EU_COUNTRY_DATA[code])
+        .map(([code, a]) => {
+          const fields = [a.bio, a.photo, a.wiki, a.enriched, a.finance, a.birth];
+          const avgCompleteness = a.total > 0 ? fields.reduce((s, v) => s + v / a.total, 0) / fields.length * 100 : 0;
+          const gapScore = 100 - avgCompleteness;
+          return {
+            code,
+            name: byCountry.find(c => c.code === code)?.name || code,
+            total: a.total,
+            bioRate: a.total > 0 ? Math.round((a.bio / a.total) * 100) : 0,
+            photoRate: a.total > 0 ? Math.round((a.photo / a.total) * 100) : 0,
+            wikiRate: a.total > 0 ? Math.round((a.wiki / a.total) * 100) : 0,
+            financeRate: a.total > 0 ? Math.round((a.finance / a.total) * 100) : 0,
+            investRate: a.total > 0 ? Math.round((a.invest / a.total) * 100) : 0,
+            enrichedRate: a.total > 0 ? Math.round((a.enriched / a.total) * 100) : 0,
+            birthRate: a.total > 0 ? Math.round((a.birth / a.total) * 100) : 0,
+            twitterRate: a.total > 0 ? Math.round((a.twitter / a.total) * 100) : 0,
+            completeness: Math.round(avgCompleteness),
+            gap: Math.round(gapScore),
+          };
+        })
+        .sort((a, b) => b.gap - a.gap);
+
       // === Proposal data ===
       const proposals = proposalsData.data || [];
       const proposalsByCountry: Record<string, { code: string; name: string; count: number }> = {};
@@ -592,6 +639,7 @@ function useDataStats() {
         proposalsByArea: Object.entries(proposalsByArea).map(([name, count]) => ({ name: name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
         proposalsByType: Object.entries(proposalsByType).map(([name, count]) => ({ name: name.replace(/\b\w/g, c => c.toUpperCase()), count })).sort((a, b) => b.count - a.count),
         proposalCountries: Object.keys(proposalsByCountry).length,
+        dataAvailability,
       };
     },
   });
@@ -967,6 +1015,123 @@ const Data = () => {
             </div>
           </div>
         </section>
+
+        {/* === DATA AVAILABILITY / TRANSPARENCY GAP === */}
+        <div className="brutalist-border-b pb-2 mt-4">
+          <h2 className="text-xl font-extrabold tracking-tighter font-mono">🔍 DATA AVAILABILITY GAP</h2>
+          <p className="text-xs font-mono text-muted-foreground mt-1">
+            Missing data per country — higher gaps may indicate lower institutional transparency or limited open data infrastructure
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">TRANSPARENCY GAP SCORE</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">% of key fields missing — biography, photo, finances, Wikipedia, birth year</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={stats.dataAvailability} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="code" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={({ active, payload }: any) => {
+                    if (!active || !payload?.[0]) return null;
+                    const d = payload[0].payload;
+                    return (
+                      <div className="brutalist-border bg-background p-3 text-xs font-mono shadow-lg min-w-[220px]">
+                        <p className="font-bold text-sm mb-1">{d.name} ({d.code})</p>
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between"><span className="text-muted-foreground">Politicians</span><span>{d.total}</span></div>
+                          <div className="flex justify-between font-bold" style={{ color: 'hsl(0, 55%, 45%)' }}><span>Gap Score</span><span>{d.gap}%</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Completeness</span><span>{d.completeness}%</span></div>
+                          <div className="mt-1 pt-1 border-t border-border space-y-0.5">
+                            <div className="flex justify-between"><span className="text-muted-foreground">Biography</span><span>{d.bioRate}%</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Photo</span><span>{d.photoRate}%</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Wikipedia</span><span>{d.wikiRate}%</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Finances</span><span>{d.financeRate}%</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Birth Year</span><span>{d.birthRate}%</span></div>
+                          </div>
+                        </div>
+                        <div className="mt-2 pt-1 border-t border-border text-[10px] text-muted-foreground">Click bar for breakdown</div>
+                      </div>
+                    );
+                  }} />
+                  <Bar dataKey="gap" radius={[2, 2, 0, 0]} className="cursor-pointer"
+                    onClick={(p: any) => {
+                      if (!p) return;
+                      setDetail({
+                        title: `Data Gap: ${p.name} (${p.code})`,
+                        rows: [
+                          { label: 'Politicians', value: p.total },
+                          { label: 'Gap Score', value: `${p.gap}%`, bar: p.gap, color: 'hsl(0, 55%, 45%)' },
+                          { label: 'Completeness', value: `${p.completeness}%`, bar: p.completeness, color: 'hsl(142, 50%, 40%)' },
+                          { label: 'Biography Available', value: `${p.bioRate}%`, bar: p.bioRate },
+                          { label: 'Photo Available', value: `${p.photoRate}%`, bar: p.photoRate },
+                          { label: 'Wikipedia Linked', value: `${p.wikiRate}%`, bar: p.wikiRate },
+                          { label: 'Financial Data', value: `${p.financeRate}%`, bar: p.financeRate },
+                          { label: 'Investment Data', value: `${p.investRate}%`, bar: p.investRate },
+                          { label: 'Enriched', value: `${p.enrichedRate}%`, bar: p.enrichedRate },
+                          { label: 'Birth Year', value: `${p.birthRate}%`, bar: p.birthRate },
+                          { label: 'Twitter/X', value: `${p.twitterRate}%`, bar: p.twitterRate },
+                        ],
+                      });
+                    }}>
+                    {stats.dataAvailability.map((d: any, i: number) => (
+                      <Cell key={i} fill={d.gap > 60 ? 'hsl(0, 55%, 45%)' : d.gap > 30 ? 'hsl(38, 80%, 50%)' : 'hsl(142, 50%, 40%)'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">FIELD-BY-FIELD BREAKDOWN</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Data availability % per country — colored by completeness</p>
+            <div className="brutalist-border bg-card overflow-hidden">
+              <div className="max-h-[400px] overflow-y-auto">
+                <table className="w-full text-xs font-mono">
+                  <thead className="sticky top-0 bg-card z-10">
+                    <tr className="border-b border-border">
+                      <th className="text-left p-2 font-bold">COUNTRY</th>
+                      <th className="text-center p-2 font-bold" title="Biography">BIO</th>
+                      <th className="text-center p-2 font-bold" title="Photo">📷</th>
+                      <th className="text-center p-2 font-bold" title="Wikipedia">WIKI</th>
+                      <th className="text-center p-2 font-bold" title="Financial data">💰</th>
+                      <th className="text-center p-2 font-bold" title="Birth year">🎂</th>
+                      <th className="text-right p-2 font-bold">GAP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.dataAvailability.map((d: any, i: number) => (
+                      <tr key={i} className="border-b border-border/50 hover:bg-muted/50 cursor-pointer"
+                        onClick={() => setDetail({
+                          title: `Data Gap: ${d.name} (${d.code})`,
+                          rows: [
+                            { label: 'Politicians', value: d.total },
+                            { label: 'Gap Score', value: `${d.gap}%`, bar: d.gap, color: 'hsl(0, 55%, 45%)' },
+                            { label: 'Biography', value: `${d.bioRate}%`, bar: d.bioRate },
+                            { label: 'Photo', value: `${d.photoRate}%`, bar: d.photoRate },
+                            { label: 'Wikipedia', value: `${d.wikiRate}%`, bar: d.wikiRate },
+                            { label: 'Finances', value: `${d.financeRate}%`, bar: d.financeRate },
+                            { label: 'Twitter/X', value: `${d.twitterRate}%`, bar: d.twitterRate },
+                          ],
+                        })}>
+                        <td className="p-2">{d.code}</td>
+                        <td className="p-2 text-center" style={{ backgroundColor: `hsl(${d.bioRate > 50 ? 142 : 0}, ${Math.abs(d.bioRate - 50)}%, ${90 - d.bioRate * 0.3}%)` }}>{d.bioRate}%</td>
+                        <td className="p-2 text-center" style={{ backgroundColor: `hsl(${d.photoRate > 50 ? 142 : 0}, ${Math.abs(d.photoRate - 50)}%, ${90 - d.photoRate * 0.3}%)` }}>{d.photoRate}%</td>
+                        <td className="p-2 text-center" style={{ backgroundColor: `hsl(${d.wikiRate > 50 ? 142 : 0}, ${Math.abs(d.wikiRate - 50)}%, ${90 - d.wikiRate * 0.3}%)` }}>{d.wikiRate}%</td>
+                        <td className="p-2 text-center" style={{ backgroundColor: `hsl(${d.financeRate > 50 ? 142 : 0}, ${Math.abs(d.financeRate - 50)}%, ${90 - d.financeRate * 0.3}%)` }}>{d.financeRate}%</td>
+                        <td className="p-2 text-center" style={{ backgroundColor: `hsl(${d.birthRate > 50 ? 142 : 0}, ${Math.abs(d.birthRate - 50)}%, ${90 - d.birthRate * 0.3}%)` }}>{d.birthRate}%</td>
+                        <td className="p-2 text-right font-bold" style={{ color: d.gap > 60 ? 'hsl(0, 55%, 45%)' : d.gap > 30 ? 'hsl(38, 80%, 50%)' : 'hsl(142, 50%, 40%)' }}>{d.gap}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
 
         {/* === FINANCIAL TRANSPARENCY SECTION === */}
         <div className="brutalist-border-b pb-2 mt-4">
