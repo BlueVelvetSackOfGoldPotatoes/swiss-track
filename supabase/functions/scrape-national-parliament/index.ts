@@ -296,75 +296,40 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Step 3: Get Wikipedia summaries for the batch
-    let summaries = new Map();
-    if (!skipEnrichment) {
-      summaries = await getWikiSummaries(batch);
-    }
+    // Step 3: Get existing names for this country to avoid duplicates
+    const { data: existingPols } = await supabase
+      .from("politicians")
+      .select("name")
+      .eq("country_code", countryCode);
+    const existingNames = new Set((existingPols || []).map((p: any) => p.name));
 
-    let created = 0, updated = 0;
-    for (const memberTitle of batch) {
-      const summary = summaries.get(memberTitle);
-      const wikiUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(memberTitle.replace(/ /g, "_"))}`;
+    // Filter to only new members
+    const newMembers = batch.filter(m => !existingNames.has(m));
+    console.log(`${newMembers.length} new members (${batch.length - newMembers.length} already exist)`);
 
-      // Check if exists by name + country
-      const { data: existing } = await supabase
-        .from("politicians")
-        .select("id")
-        .eq("name", memberTitle)
-        .eq("country_code", countryCode)
-        .maybeSingle();
-
-      const record: Record<string, any> = {
-        name: memberTitle,
+    // Step 4: Batch insert new members
+    if (newMembers.length > 0) {
+      const records = newMembers.map(name => ({
+        name,
         country_code: countryCode,
         country_name: config.countryName,
         role: config.role,
         jurisdiction: "federal",
         continent: "Europe",
         data_source: "parliamentary_record" as const,
-        source_url: wikiUrl,
-        wikipedia_url: wikiUrl,
-      };
+        source_url: `https://en.wikipedia.org/wiki/${encodeURIComponent(name.replace(/ /g, "_"))}`,
+        wikipedia_url: `https://en.wikipedia.org/wiki/${encodeURIComponent(name.replace(/ /g, "_"))}`,
+      }));
 
-      if (summary) {
-        record.wikipedia_summary = summary.extract || null;
-        record.wikipedia_data = {
-          title: memberTitle,
-          description: summary.description || null,
-          parliament: config.parliament,
-          last_fetched: new Date().toISOString(),
-        };
-        record.enriched_at = new Date().toISOString();
-        if (summary.image) {
-          record.photo_url = summary.image;
-          record.wikipedia_image_url = summary.image;
-        }
-        // Try to extract party from description
-        if (summary.description) {
-          record.biography = summary.extract || null;
-        }
-      }
-
-      if (existing) {
-        // Only update if not already a more specific role
-        const { data: currentData } = await supabase
-          .from("politicians")
-          .select("role")
-          .eq("id", existing.id)
-          .single();
-
-        // Don't overwrite specific roles like "Prime Minister" with generic "Member of Parliament"
-        if (currentData?.role === "Member of European Parliament" || 
-            currentData?.role === config.role) {
-          await supabase.from("politicians").update(record).eq("id", existing.id);
-          updated++;
-        }
-      } else {
-        await supabase.from("politicians").insert(record);
-        created++;
+      // Insert in chunks of 50
+      for (let i = 0; i < records.length; i += 50) {
+        const chunk = records.slice(i, i + 50);
+        await supabase.from("politicians").insert(chunk);
       }
     }
+
+    const created = newMembers.length;
+    const updated = 0;
 
     const hasMore = offset + batchSize < allMembers.length;
 
