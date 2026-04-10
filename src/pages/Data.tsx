@@ -843,6 +843,130 @@ const Data = () => {
           </div>
         </section>
 
+        {/* Political Ideology & Orientation */}
+        <section>
+          <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">POLITICAL ORIENTATION</h2>
+          <p className="text-xs font-mono text-muted-foreground mb-4">
+            Multi-axis political positioning based on party family mapping (Chapel Hill Expert Survey methodology) · {stats.totalPositions} profiles
+          </p>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Political Compass scatter */}
+            <div>
+              <h3 className="text-sm font-mono font-bold mb-2">POLITICAL COMPASS</h3>
+              <p className="text-xs text-muted-foreground mb-2">Economic Left↔Right vs Social Liberal↔Authoritarian</p>
+              <div className="brutalist-border bg-card p-4">
+                <ResponsiveContainer width="100%" height={350}>
+                  <ScatterChart margin={{ top: 10, right: 10, bottom: 30, left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" dataKey="x" domain={[-10, 10]} name="Economic"
+                      tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))"
+                      label={{ value: '← Left — Right →', position: 'bottom', fontSize: 10, fontFamily: 'monospace', fill: 'hsl(var(--muted-foreground))' }} />
+                    <YAxis type="number" dataKey="y" domain={[-10, 10]} name="Social"
+                      tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))"
+                      label={{ value: '← Liberal — Auth →', angle: -90, position: 'left', fontSize: 10, fontFamily: 'monospace', fill: 'hsl(var(--muted-foreground))' }} />
+                    <ReferenceLine x={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeOpacity={0.4} />
+                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeOpacity={0.4} />
+                    <Tooltip content={({ active, payload }: any) => {
+                      if (!active || !payload?.[0]) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div className="brutalist-border bg-card p-2 text-xs font-mono shadow-lg">
+                          <div className="font-bold">{d.ideology}</div>
+                          <div>Econ: {d.x} · Social: {d.y}</div>
+                        </div>
+                      );
+                    }} />
+                    <Scatter data={stats.compassSample}>
+                      {stats.compassSample.map((d: any, i: number) => (
+                        <Cell key={i} fill={IDEOLOGY_COLORS[d.ideology] || 'hsl(0,0%,55%)'} opacity={0.5} r={3} />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                  {Object.entries(IDEOLOGY_COLORS).map(([label, color]) => (
+                    <div key={label} className="flex items-center gap-1 text-[9px] font-mono">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Ideology distribution */}
+            <div>
+              <h3 className="text-sm font-mono font-bold mb-2">IDEOLOGY DISTRIBUTION</h3>
+              <p className="text-xs text-muted-foreground mb-2">Number of politicians per ideology family</p>
+              <div className="brutalist-border bg-card p-4">
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={stats.byIdeology} layout="vertical" margin={{ top: 5, right: 20, left: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis type="category" dataKey="name" width={160} tick={{ fontSize: 9, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="count" radius={[0, 2, 2, 0]}>
+                      {stats.byIdeology.map((d: any, i: number) => (
+                        <Cell key={i} fill={IDEOLOGY_COLORS[d.name] || COLORS[i % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Average policy priorities radar */}
+            <div>
+              <h3 className="text-sm font-mono font-bold mb-2">AVERAGE POLICY PRIORITIES</h3>
+              <p className="text-xs text-muted-foreground mb-2">Mean priority score across all tracked politicians (0-10)</p>
+              <div className="brutalist-border bg-card p-4">
+                <ResponsiveContainer width="100%" height={300}>
+                  <RadarChart data={stats.avgPriorities} cx="50%" cy="50%" outerRadius="75%">
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarAngleAxis dataKey="domain" tick={{ fontSize: 10, fontFamily: 'monospace', fill: 'hsl(var(--muted-foreground))' }} />
+                    <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 9 }} tickCount={6} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip content={({ active, payload }: any) => {
+                      if (!active || !payload?.[0]) return null;
+                      return (
+                        <div className="brutalist-border bg-card p-2 text-xs font-mono shadow-lg">
+                          <div className="font-bold">{payload[0].payload.domain}</div>
+                          <div>Avg priority: {payload[0].value}/10</div>
+                        </div>
+                      );
+                    }} />
+                    <Radar dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.25} strokeWidth={2} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* EU Integration distribution */}
+            <div>
+              <h3 className="text-sm font-mono font-bold mb-2">EU INTEGRATION STANCE</h3>
+              <p className="text-xs text-muted-foreground mb-2">Distribution of pro-EU vs eurosceptic positions</p>
+              <div className="brutalist-border bg-card p-4">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.euDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" angle={-25} textAnchor="end" interval={0} tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+                      {stats.euDistribution.map((_: any, i: number) => {
+                        const euColors = ['hsl(0, 55%, 45%)', 'hsl(25, 60%, 50%)', 'hsl(0, 0%, 55%)', 'hsl(215, 45%, 50%)', 'hsl(215, 60%, 40%)'];
+                        return <Cell key={i} fill={euColors[i]} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Data Sources */}
         <section>
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">DATA SOURCES</h2>
