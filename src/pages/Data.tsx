@@ -265,7 +265,7 @@ function useDataStats() {
   return useQuery({
     queryKey: ['data-stats'],
     queryFn: async () => {
-      const [politicians, events, countryData, partyData, jurisdictionData, eventTypeData, enrichmentData, epGroupData, financesData, investmentsData, positionsData, proposalsData] = await Promise.all([
+      const [politicians, events, countryData, partyData, jurisdictionData, eventTypeData, enrichmentData, epGroupData, financesData, investmentsData, positionsData, proposalsData, fullPoliticians] = await Promise.all([
         supabase.from('politicians').select('id', { count: 'exact', head: true }),
         supabase.from('political_events').select('id', { count: 'exact', head: true }),
         supabase.from('politicians').select('country_name, country_code'),
@@ -278,6 +278,7 @@ function useDataStats() {
         supabase.from('politician_investments').select('politician_id, company_name, sector, estimated_value, investment_type'),
         supabase.from('politician_positions').select('economic_score, social_score, ideology_label, eu_integration_score, environmental_score, immigration_score, education_priority, science_priority, healthcare_priority, defense_priority, economy_priority, justice_priority, social_welfare_priority, environment_priority'),
         supabase.from('proposals').select('country_code, country_name, status, policy_area, proposal_type, jurisdiction'),
+        supabase.from('politicians').select('id, country_code, country_name, biography, photo_url, wikipedia_url, enriched_at, birth_year, twitter_handle'),
       ]);
 
       // Country breakdown
