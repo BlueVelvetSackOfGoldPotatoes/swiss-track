@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
+import { ProvenanceBar } from '@/components/SourceBadge';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, ScatterChart, Scatter, ZAxis,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ReferenceLine,
 } from 'recharts';
 import { IDEOLOGY_COLORS } from '@/components/PoliticalCompass';
+import { X } from 'lucide-react';
 
 const COLORS = [
   'hsl(215, 30%, 45%)', 'hsl(0, 55%, 45%)', 'hsl(150, 40%, 40%)',
@@ -57,6 +60,207 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   );
 }
 
+// === Detail Panel (click to expand) ===
+function DetailPanel({ data, onClose }: { data: { title: string; rows: Array<{ label: string; value: string | number; bar?: number; color?: string }> } | null; onClose: () => void }) {
+  if (!data) return null;
+  return (
+    <div className="brutalist-border bg-card p-4 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-mono text-xs font-bold">{data.title}</h4>
+        <button onClick={onClose} className="p-1 hover:bg-muted rounded transition-colors">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div className="space-y-1.5">
+        {data.rows.map((row, i) => (
+          <div key={i} className="flex items-center gap-2 font-mono text-xs">
+            <span className="text-muted-foreground min-w-[120px]">{row.label}</span>
+            <span className="font-bold">{row.value}</span>
+            {row.bar !== undefined && (
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden ml-2">
+                <div className="h-full rounded-full" style={{ width: `${Math.min(row.bar, 100)}%`, backgroundColor: row.color || 'hsl(var(--primary))' }} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// === Rich Tooltips ===
+
+function RichBarTooltip({ active, payload, label, totalLabel, totalValue, extra }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  const val = payload[0]?.value;
+  const pct = totalValue ? ((val / totalValue) * 100).toFixed(1) : null;
+  return (
+    <div className="brutalist-border bg-background p-3 text-xs font-mono shadow-lg min-w-[180px]">
+      <p className="font-bold text-sm mb-1">{d?.fullName || d?.name || label}</p>
+      <div className="space-y-0.5">
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Count</span>
+          <span className="font-bold">{val?.toLocaleString?.() ?? val}</span>
+        </div>
+        {pct && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Share</span>
+            <span>{pct}%</span>
+          </div>
+        )}
+        {totalValue && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">{totalLabel || 'Total'}</span>
+            <span>{totalValue?.toLocaleString?.() ?? totalValue}</span>
+          </div>
+        )}
+        {d?.population && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Population</span>
+            <span>{(d.population / 1_000_000).toFixed(1)}M</span>
+          </div>
+        )}
+        {d?.gdp && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">GDP</span>
+            <span>${d.gdp}B</span>
+          </div>
+        )}
+        {d?.perMillion !== undefined && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Per Million</span>
+            <span>{d.perMillion}</span>
+          </div>
+        )}
+        {d?.perBillion !== undefined && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Per $B GDP</span>
+            <span>{d.perBillion}</span>
+          </div>
+        )}
+        {d?.gdpPerPolitician !== undefined && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">GDP/Politician</span>
+            <span>${d.gdpPerPolitician}B</span>
+          </div>
+        )}
+        {d?.avgSalary !== undefined && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Avg Salary</span>
+            <span>€{d.avgSalary.toLocaleString()}</span>
+          </div>
+        )}
+        {d?.count !== undefined && d?.value !== undefined && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Holdings</span>
+            <span>{d.count}</span>
+          </div>
+        )}
+        {extra?.(d)}
+      </div>
+      <div className="mt-2 pt-1 border-t border-border text-[10px] text-muted-foreground">
+        Click bar for full breakdown
+      </div>
+    </div>
+  );
+}
+
+function RichPieTooltip({ active, payload, totalValue }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0];
+  const val = d?.value;
+  const pct = totalValue ? ((val / totalValue) * 100).toFixed(1) : ((d?.percent || 0) * 100).toFixed(1);
+  return (
+    <div className="brutalist-border bg-background p-3 text-xs font-mono shadow-lg min-w-[180px]">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: d?.payload?.fill || d?.color }} />
+        <span className="font-bold text-sm">{d?.name}</span>
+      </div>
+      <div className="space-y-0.5">
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Value</span>
+          <span className="font-bold">{val?.toLocaleString?.() ?? val}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Share</span>
+          <span>{pct}%</span>
+        </div>
+        {totalValue && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Total</span>
+            <span>{totalValue?.toLocaleString?.() ?? totalValue}</span>
+          </div>
+        )}
+        {d?.payload?.count !== undefined && d?.payload?.value !== undefined && (
+          <>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Holdings</span>
+              <span>{d.payload.count}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Value</span>
+              <span>€{(d.payload.value / 1000).toFixed(0)}K</span>
+            </div>
+          </>
+        )}
+      </div>
+      <div className="mt-2 pt-1 border-t border-border text-[10px] text-muted-foreground">
+        Click slice for details
+      </div>
+    </div>
+  );
+}
+
+function RichScatterTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  return (
+    <div className="brutalist-border bg-background p-3 text-xs font-mono shadow-lg min-w-[200px]">
+      <p className="font-bold text-sm mb-1">{d?.fullName || d?.ideology || d?.name}</p>
+      <div className="space-y-0.5">
+        {d?.gdp !== undefined && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">GDP</span>
+            <span>${d.gdp}B</span>
+          </div>
+        )}
+        {d?.politicians !== undefined && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Politicians</span>
+            <span>{d.politicians}</span>
+          </div>
+        )}
+        {d?.population !== undefined && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Population</span>
+            <span>{typeof d.population === 'number' && d.population < 1000 ? `${d.population.toFixed(1)}M` : d.population?.toLocaleString?.()}</span>
+          </div>
+        )}
+        {d?.x !== undefined && (
+          <>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Economic</span>
+              <span>{d.x > 0 ? '+' : ''}{d.x} ({d.x > 2 ? 'Right' : d.x < -2 ? 'Left' : 'Centre'})</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Social</span>
+              <span>{d.y > 0 ? '+' : ''}{d.y} ({d.y > 2 ? 'Auth' : d.y < -2 ? 'Liberal' : 'Moderate'})</span>
+            </div>
+          </>
+        )}
+        {d?.gdpPerPolitician !== undefined && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">GDP per Politician</span>
+            <span>${(d.gdp / d.politicians).toFixed(1)}B</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// === Data hook (unchanged logic, extracted for clarity) ===
 function useDataStats() {
   return useQuery({
     queryKey: ['data-stats'],
@@ -152,6 +356,8 @@ function useDataStats() {
             fullName: c.name,
             count: c.count,
             population: ref.population,
+            gdp: ref.gdp,
+            area: ref.area,
             perMillion: parseFloat(((c.count / ref.population) * 1_000_000).toFixed(1)),
           };
         })
@@ -167,6 +373,7 @@ function useDataStats() {
             fullName: c.name,
             count: c.count,
             gdp: ref.gdp,
+            population: ref.population,
             perBillion: parseFloat((c.count / ref.gdp).toFixed(2)),
           };
         })
@@ -217,6 +424,8 @@ function useDataStats() {
             name: c.code,
             fullName: c.name,
             gdpPerPolitician: parseFloat((ref.gdp / c.count).toFixed(1)),
+            count: c.count,
+            gdp: ref.gdp,
           };
         })
         .sort((a, b) => b.gdpPerPolitician - a.gdpPerPolitician);
@@ -238,7 +447,7 @@ function useDataStats() {
         const bucket = salaryBuckets.find(b => f.annual_salary >= b.min && f.annual_salary < b.max);
         if (bucket) bucket.count++;
       });
-      const salaryDistribution = salaryBuckets.map(b => ({ name: b.range, count: b.count }));
+      const salaryDistribution = salaryBuckets.map(b => ({ name: b.range, count: b.count, min: b.min, max: b.max }));
 
       // Investment sectors
       const sectorTotals: Record<string, { value: number; count: number }> = {};
@@ -388,74 +597,6 @@ function useDataStats() {
   });
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="brutalist-border bg-background p-2 text-xs font-mono">
-      <p className="font-bold">{label || payload[0]?.name}</p>
-      <p>{payload[0]?.value} politicians</p>
-    </div>
-  );
-};
-
-const PieTooltip = ({ active, payload }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="brutalist-border bg-background p-2 text-xs font-mono">
-      <p className="font-bold">{payload[0]?.name}</p>
-      <p>{payload[0]?.value} ({((payload[0]?.value / payload[0]?.payload?.total) * 100).toFixed(1)}%)</p>
-    </div>
-  );
-};
-
-const ScatterTooltip = ({ active, payload }: any) => {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  return (
-    <div className="brutalist-border bg-background p-2 text-xs font-mono space-y-0.5">
-      <p className="font-bold">{d?.fullName}</p>
-      <p>GDP: ${d?.gdp}B</p>
-      <p>Politicians: {d?.politicians}</p>
-      <p>Population: {d?.population?.toFixed(1)}M</p>
-    </div>
-  );
-};
-
-const PerCapitaTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  return (
-    <div className="brutalist-border bg-background p-2 text-xs font-mono">
-      <p className="font-bold">{d?.fullName || label}</p>
-      <p>{payload[0]?.value} per million people</p>
-      <p className="text-muted-foreground">{d?.count} politicians / {(d?.population / 1_000_000).toFixed(1)}M pop</p>
-    </div>
-  );
-};
-
-const PerGdpTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  return (
-    <div className="brutalist-border bg-background p-2 text-xs font-mono">
-      <p className="font-bold">{d?.fullName || label}</p>
-      <p>{payload[0]?.value} per $B GDP</p>
-      <p className="text-muted-foreground">{d?.count} politicians / ${d?.gdp}B GDP</p>
-    </div>
-  );
-};
-
-const GdpPerPolTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  return (
-    <div className="brutalist-border bg-background p-2 text-xs font-mono">
-      <p className="font-bold">{d?.fullName || label}</p>
-      <p>${payload[0]?.value}B GDP per politician</p>
-    </div>
-  );
-};
-
 const RADIAN = Math.PI / 180;
 const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, percent }: any) => {
   if (percent < 0.04) return null;
@@ -471,14 +612,13 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, p
 
 const Data = () => {
   const { data: stats, isLoading } = useDataStats();
+  const [detail, setDetail] = useState<{ title: string; rows: Array<{ label: string; value: string | number; bar?: number; color?: string }> } | null>(null);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
-        <div className="container py-12 text-center font-mono text-muted-foreground">
-          Loading data…
-        </div>
+        <div className="container py-12 text-center font-mono text-muted-foreground">Loading data…</div>
         <SiteFooter />
       </div>
     );
@@ -491,17 +631,66 @@ const Data = () => {
   const eventTotal = stats.byEventType.reduce((s, e) => s + e.count, 0);
   const eventsWithTotal = stats.byEventType.map(e => ({ ...e, total: eventTotal }));
 
+  const handleBarClick = (data: any, chartTitle: string, extra?: Record<string, string | number>) => {
+    if (!data) return;
+    const d = data.activePayload?.[0]?.payload || data;
+    const ref = EU_COUNTRY_DATA[d.code || d.name];
+    const rows: Array<{ label: string; value: string | number; bar?: number; color?: string }> = [
+      { label: 'Value', value: (d.count ?? d.perMillion ?? d.perBillion ?? d.gdpPerPolitician ?? d.avgSalary ?? d.value ?? 0).toLocaleString() },
+    ];
+    if (d.fullName) rows.unshift({ label: 'Country', value: d.fullName });
+    if (ref) {
+      rows.push({ label: 'Population', value: `${(ref.population / 1_000_000).toFixed(1)}M` });
+      rows.push({ label: 'GDP', value: `$${ref.gdp}B` });
+      rows.push({ label: 'Area', value: `${ref.area.toLocaleString()} km²` });
+      if (d.count) {
+        rows.push({ label: 'Per Million', value: ((d.count / ref.population) * 1_000_000).toFixed(1) });
+        rows.push({ label: 'Per $B GDP', value: (d.count / ref.gdp).toFixed(2) });
+      }
+    }
+    if (d.avgSalary) rows.push({ label: 'Sample Size', value: `${d.count} politicians` });
+    if (d.investors) rows.push({ label: 'Investors', value: d.investors });
+    if (d.sector) rows.push({ label: 'Sector', value: d.sector });
+    if (extra) Object.entries(extra).forEach(([k, v]) => rows.push({ label: k, value: v }));
+    
+    // Add percentage bar
+    const maxVal = d.count ?? d.perMillion ?? d.perBillion ?? d.gdpPerPolitician ?? 0;
+    if (maxVal > 0) {
+      rows.forEach(r => { if (r.label === 'Value') r.bar = 100; });
+    }
+
+    setDetail({ title: `${chartTitle}: ${d.fullName || d.name || d.range || ''}`, rows });
+  };
+
+  const handlePieClick = (data: any, chartTitle: string) => {
+    if (!data) return;
+    const rows: Array<{ label: string; value: string | number; bar?: number; color?: string }> = [
+      { label: 'Category', value: data.name },
+      { label: 'Count', value: data.count ?? data.value ?? 0 },
+    ];
+    if (data.total) rows.push({ label: 'Total', value: data.total });
+    if (data.total) rows.push({ label: 'Share', value: `${((data.count || data.value) / data.total * 100).toFixed(1)}%`, bar: ((data.count || data.value) / data.total) * 100 });
+    if (data.value && data.count) {
+      rows.push({ label: 'Total Value', value: `€${(data.value / 1000).toFixed(0)}K` });
+      rows.push({ label: 'Holdings', value: data.count });
+    }
+    setDetail({ title: `${chartTitle}: ${data.name}`, rows });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="container py-8 space-y-8">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-extrabold tracking-tighter">DATA OBSERVATORY</h1>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            Live statistics from {stats.totalPoliticians.toLocaleString()} politicians across {stats.totalCountries} EU countries
+            Live statistics from {stats.totalPoliticians.toLocaleString()} politicians across {stats.totalCountries} EU countries.
+            Click any bar, slice, or point for an in-depth breakdown.
           </p>
         </div>
+
+        {/* Detail panel (shown on click) */}
+        <DetailPanel data={detail} onClose={() => setDetail(null)} />
 
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -518,12 +707,13 @@ const Data = () => {
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">POLITICIANS PER COUNTRY</h2>
           <div className="brutalist-border bg-card p-4">
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={stats.byCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+              <BarChart data={stats.byCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
+                onClick={(d) => handleBarClick(d, 'Politicians per Country')}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="code" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                <Tooltip content={<RichBarTooltip totalValue={stats.totalPoliticians} totalLabel="Total Politicians" />} />
+                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} className="cursor-pointer" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -536,12 +726,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Political representation density — smaller countries have higher ratios</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={stats.perCapita} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                <BarChart data={stats.perCapita} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
+                  onClick={(d) => handleBarClick(d, 'Per Capita Representation')}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip content={<PerCapitaTooltip />} />
-                  <Bar dataKey="perMillion" fill="hsl(150, 40%, 40%)" radius={[2, 2, 0, 0]} />
+                  <Tooltip content={<RichBarTooltip />} />
+                  <Bar dataKey="perMillion" fill="hsl(150, 40%, 40%)" radius={[2, 2, 0, 0]} className="cursor-pointer" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -552,12 +743,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Political density relative to economic output</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={stats.perGdp} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                <BarChart data={stats.perGdp} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
+                  onClick={(d) => handleBarClick(d, 'Per GDP Representation')}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip content={<PerGdpTooltip />} />
-                  <Bar dataKey="perBillion" fill="hsl(45, 70%, 50%)" radius={[2, 2, 0, 0]} />
+                  <Tooltip content={<RichBarTooltip />} />
+                  <Bar dataKey="perBillion" fill="hsl(45, 70%, 50%)" radius={[2, 2, 0, 0]} className="cursor-pointer" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -567,7 +759,7 @@ const Data = () => {
         {/* NEW: GDP vs Politicians Scatter */}
         <section>
           <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">GDP vs POLITICAL REPRESENTATION</h2>
-          <p className="text-xs font-mono text-muted-foreground mb-4">Bubble size = population (millions). Shows whether richer countries have proportionally more tracked politicians</p>
+          <p className="text-xs font-mono text-muted-foreground mb-4">Bubble size = population (millions). Click a bubble for details.</p>
           <div className="brutalist-border bg-card p-4">
             <ResponsiveContainer width="100%" height={420}>
               <ScatterChart margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
@@ -575,8 +767,9 @@ const Data = () => {
                 <XAxis type="number" dataKey="gdp" name="GDP ($B)" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" label={{ value: 'GDP ($B)', position: 'insideBottom', offset: -5, style: { fontSize: 11, fontFamily: 'monospace' } }} />
                 <YAxis type="number" dataKey="politicians" name="Politicians" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" label={{ value: 'Politicians', angle: -90, position: 'insideLeft', style: { fontSize: 11, fontFamily: 'monospace' } }} />
                 <ZAxis type="number" dataKey="population" range={[40, 400]} />
-                <Tooltip content={<ScatterTooltip />} />
-                <Scatter data={stats.scatterData} fill="hsl(var(--primary))" fillOpacity={0.7} stroke="hsl(var(--primary))" strokeWidth={1} />
+                <Tooltip content={<RichScatterTooltip />} />
+                <Scatter data={stats.scatterData} fill="hsl(var(--primary))" fillOpacity={0.7} stroke="hsl(var(--primary))" strokeWidth={1} className="cursor-pointer"
+                  onClick={(d: any) => handleBarClick(d, 'Country Detail')} />
               </ScatterChart>
             </ResponsiveContainer>
           </div>
@@ -588,12 +781,13 @@ const Data = () => {
           <p className="text-xs font-mono text-muted-foreground mb-4">Economic output per politician — higher means fewer politicians relative to GDP</p>
           <div className="brutalist-border bg-card p-4">
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={stats.gdpPerPol} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+              <BarChart data={stats.gdpPerPol} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
+                onClick={(d) => handleBarClick(d, 'GDP per Politician')}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip content={<GdpPerPolTooltip />} />
-                <Bar dataKey="gdpPerPolitician" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} />
+                <Tooltip content={<RichBarTooltip />} />
+                <Bar dataKey="gdpPerPolitician" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} className="cursor-pointer" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -614,7 +808,21 @@ const Data = () => {
                 <Radar name="Density" dataKey="density" stroke="hsl(280, 30%, 50%)" fill="hsl(280, 30%, 50%)" fillOpacity={0.15} />
                 <Radar name="Absolute" dataKey="absolute" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} />
                 <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
-                <Tooltip />
+                <Tooltip content={({ active, payload, label }: any) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0]?.payload;
+                  return (
+                    <div className="brutalist-border bg-background p-3 text-xs font-mono shadow-lg min-w-[200px]">
+                      <p className="font-bold text-sm mb-1">{d?.fullName || d?.name}</p>
+                      {payload.map((p: any, i: number) => (
+                        <div key={i} className="flex justify-between gap-4">
+                          <span style={{ color: p.stroke }}>{p.name}</span>
+                          <span className="font-bold">{p.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
@@ -626,12 +834,13 @@ const Data = () => {
             <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">EP POLITICAL GROUPS</h2>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={380}>
-                <BarChart data={stats.byGroup} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
+                <BarChart data={stats.byGroup} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}
+                  onClick={(d) => handleBarClick(d, 'EP Group')}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={80} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[0, 2, 2, 0]} />
+                  <Tooltip content={<RichBarTooltip totalValue={stats.totalPoliticians} totalLabel="Total Politicians" />} />
+                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[0, 2, 2, 0]} className="cursor-pointer" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -642,12 +851,13 @@ const Data = () => {
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={380}>
                 <PieChart>
-                  <Pie data={jurisdictionWithTotal} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={140} label={renderCustomLabel} labelLine={false}>
+                  <Pie data={jurisdictionWithTotal} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={140} label={renderCustomLabel} labelLine={false}
+                    onClick={(d) => handlePieClick(d, 'Jurisdiction')}>
                     {jurisdictionWithTotal.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} className="cursor-pointer" />
                     ))}
                   </Pie>
-                  <Tooltip content={<PieTooltip />} />
+                  <Tooltip content={<RichPieTooltip totalValue={total} />} />
                   <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
                 </PieChart>
               </ResponsiveContainer>
@@ -662,12 +872,13 @@ const Data = () => {
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie data={eventsWithTotal} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={110} label={renderCustomLabel} labelLine={false}>
+                  <Pie data={eventsWithTotal} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={110} label={renderCustomLabel} labelLine={false}
+                    onClick={(d) => handlePieClick(d, 'Event Type')}>
                     {eventsWithTotal.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} className="cursor-pointer" />
                     ))}
                   </Pie>
-                  <Tooltip content={<PieTooltip />} />
+                  <Tooltip content={<RichPieTooltip totalValue={eventTotal} />} />
                   <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
                 </PieChart>
               </ResponsiveContainer>
@@ -692,7 +903,8 @@ const Data = () => {
                       const ref = EU_COUNTRY_DATA[c.code];
                       const perM = ref ? ((c.count / ref.population) * 1_000_000).toFixed(1) : '—';
                       return (
-                        <tr key={i} className="border-b border-border/50 hover:bg-muted/50">
+                        <tr key={i} className="border-b border-border/50 hover:bg-muted/50 cursor-pointer"
+                          onClick={() => handleBarClick({ ...c, fullName: c.name }, 'Country Detail')}>
                           <td className="p-2">{c.code} {c.name}</td>
                           <td className="p-2 text-right font-bold">{c.count}</td>
                           <td className="p-2 text-right text-muted-foreground">{perM}</td>
@@ -729,7 +941,16 @@ const Data = () => {
                   {stats.byGroup.map((g, i) => {
                     const pct = ((g.count / stats.totalPoliticians) * 100).toFixed(1);
                     return (
-                      <tr key={i} className="border-b border-border/50 hover:bg-muted/50">
+                      <tr key={i} className="border-b border-border/50 hover:bg-muted/50 cursor-pointer"
+                        onClick={() => setDetail({
+                          title: `EP Group: ${g.name}`,
+                          rows: [
+                            { label: 'Members', value: g.count },
+                            { label: 'Share of Total', value: `${pct}%`, bar: parseFloat(pct) },
+                            { label: 'Total Politicians', value: stats.totalPoliticians },
+                            { label: 'Rank', value: `#${i + 1} of ${stats.byGroup.length}` },
+                          ],
+                        })}>
                         <td className="p-3 font-medium">{g.name}</td>
                         <td className="p-3 text-right font-bold">{g.count}</td>
                         <td className="p-3 text-right text-muted-foreground">{pct}%</td>
@@ -770,12 +991,24 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">How politician salaries are distributed across income brackets</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.salaryDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                <BarChart data={stats.salaryDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                  onClick={(d) => {
+                    const p = d?.activePayload?.[0]?.payload;
+                    if (!p) return;
+                    setDetail({
+                      title: `Salary Range: ${p.name}`,
+                      rows: [
+                        { label: 'Politicians', value: p.count },
+                        { label: 'Range', value: p.name },
+                        { label: 'Share', value: `${((p.count / stats.salaryDistribution.reduce((s: number, b: any) => s + b.count, 0)) * 100).toFixed(1)}%` },
+                      ],
+                    });
+                  }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                  <Tooltip content={<RichBarTooltip totalValue={stats.salaryDistribution.reduce((s: any, b: any) => s + b.count, 0)} totalLabel="Total with salary data" />} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} className="cursor-pointer" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -786,12 +1019,24 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">EP Parliament vs National Government compensation</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.avgSalaryBySource} layout="vertical" margin={{ top: 5, right: 20, left: 120, bottom: 5 }}>
+                <BarChart data={stats.avgSalaryBySource} layout="vertical" margin={{ top: 5, right: 20, left: 120, bottom: 5 }}
+                  onClick={(d) => {
+                    const p = d?.activePayload?.[0]?.payload;
+                    if (!p) return;
+                    setDetail({
+                      title: `Salary Source: ${p.name}`,
+                      rows: [
+                        { label: 'Average Salary', value: `€${p.avgSalary.toLocaleString()}` },
+                        { label: 'Sample Size', value: `${p.count} politicians` },
+                        { label: 'Source', value: p.name },
+                      ],
+                    });
+                  }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={120} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip formatter={(v: number) => `€${v.toLocaleString()}`} />
-                  <Bar dataKey="avgSalary" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} />
+                  <Tooltip content={<RichBarTooltip />} />
+                  <Bar dataKey="avgSalary" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} className="cursor-pointer" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -806,12 +1051,13 @@ const Data = () => {
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
-                  <Pie data={stats.bySector} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={130} innerRadius={50}>
+                  <Pie data={stats.bySector} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={130} innerRadius={50}
+                    onClick={(d) => handlePieClick(d, 'Investment Sector')}>
                     {stats.bySector.map((_: any, i: number) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} className="cursor-pointer" />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => `€${(v / 1000).toFixed(0)}K`} />
+                  <Tooltip content={<RichPieTooltip totalValue={stats.totalInvestmentValue} />} />
                   <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
                 </PieChart>
               </ResponsiveContainer>
@@ -834,7 +1080,17 @@ const Data = () => {
                   </thead>
                   <tbody>
                     {stats.topCompanies.map((c: any, i: number) => (
-                      <tr key={i} className="border-b border-border/50 hover:bg-muted/50">
+                      <tr key={i} className="border-b border-border/50 hover:bg-muted/50 cursor-pointer"
+                        onClick={() => setDetail({
+                          title: `Company: ${c.name}`,
+                          rows: [
+                            { label: 'Company', value: c.name },
+                            { label: 'Sector', value: c.sector || 'N/A' },
+                            { label: 'Politician Investors', value: c.investors },
+                            { label: 'Total Value', value: `€${(c.value / 1000).toFixed(0)}K` },
+                            { label: 'Avg per Investor', value: c.investors > 0 ? `€${(c.value / c.investors / 1000).toFixed(0)}K` : '—' },
+                          ],
+                        })}>
                         <td className="p-2 font-medium">{c.name}</td>
                         <td className="p-2"><span className="px-1.5 py-0.5 rounded text-[10px] bg-muted">{c.sector}</span></td>
                         <td className="p-2 text-right font-bold">{c.investors}</td>
@@ -854,12 +1110,24 @@ const Data = () => {
           <p className="text-xs font-mono text-muted-foreground mb-4">Number of individual investment positions by sector</p>
           <div className="brutalist-border bg-card p-4">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stats.bySector} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+              <BarChart data={stats.bySector} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
+                onClick={(d) => {
+                  const p = d?.activePayload?.[0]?.payload;
+                  if (!p) return;
+                  setDetail({
+                    title: `Sector: ${p.name}`,
+                    rows: [
+                      { label: 'Holdings', value: p.count },
+                      { label: 'Total Value', value: `€${(p.value / 1000).toFixed(0)}K` },
+                      { label: 'Avg per Holding', value: p.count > 0 ? `€${(p.value / p.count / 1000).toFixed(0)}K` : '—' },
+                    ],
+                  });
+                }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" angle={-30} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} />
+                <Tooltip content={<RichBarTooltip totalValue={stats.totalInvestments} totalLabel="Total Holdings" />} />
+                <Bar dataKey="count" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} className="cursor-pointer" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -876,7 +1144,7 @@ const Data = () => {
             {/* Political Compass scatter */}
             <div>
               <h3 className="text-sm font-mono font-bold mb-2">POLITICAL COMPASS</h3>
-              <p className="text-xs text-muted-foreground mb-2">Economic Left↔Right vs Social Liberal↔Authoritarian</p>
+              <p className="text-xs text-muted-foreground mb-2">Economic Left↔Right vs Social Liberal↔Authoritarian. Hover for ideology details.</p>
               <div className="brutalist-border bg-card p-4">
                 <ResponsiveContainer width="100%" height={350}>
                   <ScatterChart margin={{ top: 10, right: 10, bottom: 30, left: 20 }}>
@@ -889,19 +1157,21 @@ const Data = () => {
                       label={{ value: '← Liberal — Auth →', angle: -90, position: 'left', fontSize: 10, fontFamily: 'monospace', fill: 'hsl(var(--muted-foreground))' }} />
                     <ReferenceLine x={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeOpacity={0.4} />
                     <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeOpacity={0.4} />
-                    <Tooltip content={({ active, payload }: any) => {
-                      if (!active || !payload?.[0]) return null;
-                      const d = payload[0].payload;
-                      return (
-                        <div className="brutalist-border bg-card p-2 text-xs font-mono shadow-lg">
-                          <div className="font-bold">{d.ideology}</div>
-                          <div>Econ: {d.x} · Social: {d.y}</div>
-                        </div>
-                      );
-                    }} />
-                    <Scatter data={stats.compassSample}>
+                    <Tooltip content={<RichScatterTooltip />} />
+                    <Scatter data={stats.compassSample} className="cursor-pointer"
+                      onClick={(d: any) => {
+                        setDetail({
+                          title: `Ideology: ${d.ideology}`,
+                          rows: [
+                            { label: 'Economic Score', value: `${d.x > 0 ? '+' : ''}${d.x}`, bar: ((d.x + 10) / 20) * 100 },
+                            { label: 'Social Score', value: `${d.y > 0 ? '+' : ''}${d.y}`, bar: ((d.y + 10) / 20) * 100 },
+                            { label: 'Quadrant', value: `${d.x > 0 ? 'Right' : 'Left'}-${d.y > 0 ? 'Auth' : 'Liberal'}` },
+                            { label: 'Ideology', value: d.ideology },
+                          ],
+                        });
+                      }}>
                       {stats.compassSample.map((d: any, i: number) => (
-                        <Cell key={i} fill={IDEOLOGY_COLORS[d.ideology] || 'hsl(0,0%,55%)'} opacity={0.5} r={3} />
+                        <Cell key={i} fill={IDEOLOGY_COLORS[d.ideology] || 'hsl(0,0%,55%)'} opacity={0.5} />
                       ))}
                     </Scatter>
                   </ScatterChart>
@@ -923,12 +1193,24 @@ const Data = () => {
               <p className="text-xs text-muted-foreground mb-2">Number of politicians per ideology family</p>
               <div className="brutalist-border bg-card p-4">
                 <ResponsiveContainer width="100%" height={350}>
-                  <BarChart data={stats.byIdeology} layout="vertical" margin={{ top: 5, right: 20, left: 5, bottom: 5 }}>
+                  <BarChart data={stats.byIdeology} layout="vertical" margin={{ top: 5, right: 20, left: 5, bottom: 5 }}
+                    onClick={(d) => {
+                      const p = d?.activePayload?.[0]?.payload;
+                      if (!p) return;
+                      setDetail({
+                        title: `Ideology: ${p.name}`,
+                        rows: [
+                          { label: 'Politicians', value: p.count },
+                          { label: 'Share', value: `${((p.count / stats.totalPositions) * 100).toFixed(1)}%`, bar: (p.count / stats.totalPositions) * 100 },
+                          { label: 'Total Mapped', value: stats.totalPositions },
+                        ],
+                      });
+                    }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis type="category" dataKey="name" width={160} tick={{ fontSize: 9, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="count" radius={[0, 2, 2, 0]}>
+                    <Tooltip content={<RichBarTooltip totalValue={stats.totalPositions} totalLabel="Total Mapped" />} />
+                    <Bar dataKey="count" radius={[0, 2, 2, 0]} className="cursor-pointer">
                       {stats.byIdeology.map((d: any, i: number) => (
                         <Cell key={i} fill={IDEOLOGY_COLORS[d.name] || COLORS[i % COLORS.length]} />
                       ))}
@@ -952,10 +1234,21 @@ const Data = () => {
                     <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 9 }} tickCount={6} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip content={({ active, payload }: any) => {
                       if (!active || !payload?.[0]) return null;
+                      const d = payload[0].payload;
                       return (
-                        <div className="brutalist-border bg-card p-2 text-xs font-mono shadow-lg">
-                          <div className="font-bold">{payload[0].payload.domain}</div>
-                          <div>Avg priority: {payload[0].value}/10</div>
+                        <div className="brutalist-border bg-background p-3 text-xs font-mono shadow-lg min-w-[180px]">
+                          <div className="font-bold text-sm mb-1">{d.domain}</div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Avg Priority</span>
+                            <span className="font-bold">{d.value}/10</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Sample</span>
+                            <span>{stats.totalPositions} politicians</span>
+                          </div>
+                          <div className="mt-1 h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-primary rounded-full" style={{ width: `${(d.value / 10) * 100}%` }} />
+                          </div>
                         </div>
                       );
                     }} />
@@ -971,12 +1264,26 @@ const Data = () => {
               <p className="text-xs text-muted-foreground mb-2">Distribution of pro-EU vs eurosceptic positions</p>
               <div className="brutalist-border bg-card p-4">
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.euDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                  <BarChart data={stats.euDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
+                    onClick={(d) => {
+                      const p = d?.activePayload?.[0]?.payload;
+                      if (!p) return;
+                      const euTotal = stats.euDistribution.reduce((s: number, b: any) => s + b.count, 0);
+                      setDetail({
+                        title: `EU Stance: ${p.name}`,
+                        rows: [
+                          { label: 'Politicians', value: p.count },
+                          { label: 'Share', value: `${((p.count / euTotal) * 100).toFixed(1)}%`, bar: (p.count / euTotal) * 100 },
+                          { label: 'Category', value: p.name },
+                          { label: 'Total Mapped', value: euTotal },
+                        ],
+                      });
+                    }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="name" angle={-25} textAnchor="end" interval={0} tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+                    <Tooltip content={<RichBarTooltip totalValue={stats.euDistribution.reduce((s: any, b: any) => s + b.count, 0)} totalLabel="Total Mapped" />} />
+                    <Bar dataKey="count" radius={[2, 2, 0, 0]} className="cursor-pointer">
                       {stats.euDistribution.map((_: any, i: number) => {
                         const euColors = ['hsl(0, 55%, 45%)', 'hsl(25, 60%, 50%)', 'hsl(0, 0%, 55%)', 'hsl(215, 45%, 50%)', 'hsl(215, 60%, 40%)'];
                         return <Cell key={i} fill={euColors[i]} />;
@@ -1010,12 +1317,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Legislative activity per jurisdiction</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={stats.proposalsByCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                <BarChart data={stats.proposalsByCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
+                  onClick={(d) => handleBarClick(d, 'Proposals by Country')}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="code" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[2, 2, 0, 0]} />
+                  <Tooltip content={<RichBarTooltip totalValue={stats.totalProposals} totalLabel="Total Proposals" />} />
+                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[2, 2, 0, 0]} className="cursor-pointer" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1026,12 +1334,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Current legislative status of tracked proposals</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={stats.proposalsByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
+                <BarChart data={stats.proposalsByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}
+                  onClick={(d) => handleBarClick(d, 'Proposals by Status')}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={80} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} />
+                  <Tooltip content={<RichBarTooltip totalValue={stats.totalProposals} totalLabel="Total Proposals" />} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} className="cursor-pointer" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1044,12 +1353,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Distribution of proposals across policy domains</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={stats.proposalsByArea} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}>
+                <BarChart data={stats.proposalsByArea} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}
+                  onClick={(d) => handleBarClick(d, 'Proposals by Policy Area')}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={100} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} />
+                  <Tooltip content={<RichBarTooltip totalValue={stats.totalProposals} totalLabel="Total Proposals" />} />
+                  <Bar dataKey="count" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} className="cursor-pointer" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1061,12 +1371,13 @@ const Data = () => {
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
-                  <Pie data={stats.proposalsByType} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={120} label={renderCustomLabel} labelLine={false}>
+                  <Pie data={stats.proposalsByType} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={120} label={renderCustomLabel} labelLine={false}
+                    onClick={(d) => handlePieClick(d, 'Proposal Type')}>
                     {stats.proposalsByType.map((_: any, i: number) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} className="cursor-pointer" />
                     ))}
                   </Pie>
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<RichPieTooltip totalValue={stats.totalProposals} />} />
                   <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
                 </PieChart>
               </ResponsiveContainer>
@@ -1104,6 +1415,12 @@ const Data = () => {
               <div className="text-xs text-accent mt-2">EUR-Lex + national sources →</div>
             </a>
           </div>
+          <ProvenanceBar sources={[
+            { label: 'European Parliament', url: 'https://www.europarl.europa.eu/', type: 'official' },
+            { label: 'EUR-Lex', url: 'https://eur-lex.europa.eu/', type: 'official' },
+            { label: 'Chapel Hill Expert Survey', url: 'https://www.chesdata.eu/', type: 'model' },
+            { label: 'Wikipedia', url: 'https://en.wikipedia.org/', type: 'official' },
+          ]} />
         </section>
       </main>
       <SiteFooter />
