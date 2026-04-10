@@ -12,6 +12,7 @@ import Explore from "./pages/Explore.tsx";
 import CountryDetail from "./pages/CountryDetail.tsx";
 import Relationships from "./pages/Relationships.tsx";
 import About from "./pages/About.tsx";
+import Data from "./pages/Data.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();

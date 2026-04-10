@@ -4,6 +4,7 @@ const navItems = [
   { path: '/', label: 'CHANGELOG' },
   { path: '/explore', label: 'EXPLORE' },
   { path: '/actors', label: 'ACTORS' },
+  { path: '/data', label: 'DATA' },
   { path: '/proposals', label: 'PROPOSALS' },
   { path: '/relationships', label: 'GRAPH' },
   { path: '/about', label: 'ABOUT' },
