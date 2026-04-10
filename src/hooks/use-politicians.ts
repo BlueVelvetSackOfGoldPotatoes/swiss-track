@@ -27,6 +27,12 @@ export function mapPoliticianToActor(p: Politician): Actor {
     twitterHandle: p.twitter_handle || undefined,
     netWorth: p.net_worth || undefined,
     topDonors: p.top_donors || undefined,
+    wikipediaUrl: p.wikipedia_url || undefined,
+    wikipediaSummary: p.wikipedia_summary || undefined,
+    biography: p.biography || undefined,
+    wikipediaImageUrl: p.wikipedia_image_url || undefined,
+    wikipediaData: (p.wikipedia_data as Record<string, any>) || undefined,
+    enrichedAt: p.enriched_at || undefined,
   };
 }
 
