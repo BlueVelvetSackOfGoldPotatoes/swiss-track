@@ -19,7 +19,7 @@ async function hmacSha1(key: string, data: string): Promise<string> {
 
 const TWITTER_API = "https://api.x.com/2";
 
-function generateOAuthHeader(
+async function generateOAuthHeader(
   method: string,
   url: string,
   params: Record<string, string>,
@@ -27,7 +27,7 @@ function generateOAuthHeader(
   consumerSecret: string,
   accessToken: string,
   accessTokenSecret: string
-): string {
+): Promise<string> {
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const nonce = crypto.randomUUID().replace(/-/g, "");
 
@@ -49,8 +49,7 @@ function generateOAuthHeader(
   const baseString = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(paramString)}`;
   const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(accessTokenSecret)}`;
 
-  const signatureBytes = hmac("sha1", signingKey, baseString);
-  const signature = btoa(String.fromCharCode(...new Uint8Array(signatureBytes as ArrayBuffer)));
+  const signature = await hmacSha1(signingKey, baseString);
 
   oauthParams.oauth_signature = signature;
 
