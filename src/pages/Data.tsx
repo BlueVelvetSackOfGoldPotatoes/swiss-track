@@ -4,7 +4,8 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Treemap, Legend,
+  PieChart, Pie, Cell, Legend, ScatterChart, Scatter, ZAxis,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts';
 
 const COLORS = [
@@ -13,6 +14,37 @@ const COLORS = [
   'hsl(30, 60%, 50%)', 'hsl(330, 40%, 45%)', 'hsl(100, 35%, 45%)',
   'hsl(200, 50%, 50%)',
 ];
+
+// EU country reference data (2024 estimates)
+const EU_COUNTRY_DATA: Record<string, { population: number; gdp: number; area: number }> = {
+  DE: { population: 84_482_000, gdp: 4_456, area: 357_022 },
+  FR: { population: 68_170_000, gdp: 3_049, area: 551_695 },
+  IT: { population: 58_850_000, gdp: 2_186, area: 301_340 },
+  ES: { population: 48_345_000, gdp: 1_582, area: 505_990 },
+  PL: { population: 37_750_000, gdp: 842, area: 312_696 },
+  RO: { population: 19_038_000, gdp: 351, area: 238_397 },
+  NL: { population: 17_811_000, gdp: 1_092, area: 41_543 },
+  BE: { population: 11_686_000, gdp: 624, area: 30_528 },
+  CZ: { population: 10_827_000, gdp: 335, area: 78_871 },
+  GR: { population: 10_394_000, gdp: 239, area: 131_957 },
+  PT: { population: 10_379_000, gdp: 287, area: 92_212 },
+  SE: { population: 10_551_000, gdp: 593, area: 450_295 },
+  HU: { population: 9_597_000, gdp: 203, area: 93_028 },
+  AT: { population: 9_158_000, gdp: 516, area: 83_879 },
+  BG: { population: 6_447_000, gdp: 114, area: 110_879 },
+  DK: { population: 5_946_000, gdp: 404, area: 42_943 },
+  FI: { population: 5_563_000, gdp: 300, area: 338_424 },
+  SK: { population: 5_428_000, gdp: 127, area: 49_035 },
+  IE: { population: 5_194_000, gdp: 545, area: 70_273 },
+  HR: { population: 3_855_000, gdp: 82, area: 56_594 },
+  LT: { population: 2_860_000, gdp: 77, area: 65_300 },
+  SI: { population: 2_116_000, gdp: 68, area: 20_273 },
+  LV: { population: 1_884_000, gdp: 43, area: 64_559 },
+  EE: { population: 1_366_000, gdp: 41, area: 45_228 },
+  CY: { population: 1_260_000, gdp: 32, area: 9_251 },
+  LU: { population: 672_000, gdp: 87, area: 2_586 },
+  MT: { population: 542_000, gdp: 20, area: 316 },
+};
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
@@ -54,7 +86,6 @@ function useDataStats() {
       const groupCounts: Record<string, number> = {};
       (epGroupData.data || []).forEach((p: any) => {
         const group = p.party_name || 'Unknown';
-        // Shorten long EP group names
         const short = group
           .replace("Group of the European People's Party (Christian Democrats)", 'EPP')
           .replace('Group of the Progressive Alliance of Socialists and Democrats in the European Parliament', 'S&D')
@@ -96,23 +127,94 @@ function useDataStats() {
       const enriched = (enrichmentData.data || []).filter((p: any) => p.enriched_at).length;
       const total = enrichmentData.data?.length || 0;
 
-      // National parties (top 20)
+      // National parties
       const nationalParties: Record<string, { count: number; country: string }> = {};
       (partyData.data || []).forEach((p: any) => {
         const party = p.party_name;
         if (!party) return;
-        // Only count non-EP-group parties (national parties stored in party_abbreviation field)
         if (!nationalParties[party]) nationalParties[party] = { count: 0, country: p.country_name };
         nationalParties[party].count++;
       });
 
-      // Treemap data for country breakdown
-      const treemapData = byCountry.map((c, i) => ({
-        name: c.code || c.name,
-        size: c.count,
-        fullName: c.name,
-        fill: COLORS[i % COLORS.length],
-      }));
+      // === Cross-referenced data ===
+      // Politicians per million people
+      const perCapita = byCountry
+        .filter(c => EU_COUNTRY_DATA[c.code])
+        .map(c => {
+          const ref = EU_COUNTRY_DATA[c.code];
+          return {
+            name: c.code,
+            fullName: c.name,
+            count: c.count,
+            population: ref.population,
+            perMillion: parseFloat(((c.count / ref.population) * 1_000_000).toFixed(1)),
+          };
+        })
+        .sort((a, b) => b.perMillion - a.perMillion);
+
+      // Politicians per $B GDP
+      const perGdp = byCountry
+        .filter(c => EU_COUNTRY_DATA[c.code])
+        .map(c => {
+          const ref = EU_COUNTRY_DATA[c.code];
+          return {
+            name: c.code,
+            fullName: c.name,
+            count: c.count,
+            gdp: ref.gdp,
+            perBillion: parseFloat((c.count / ref.gdp).toFixed(2)),
+          };
+        })
+        .sort((a, b) => b.perBillion - a.perBillion);
+
+      // Scatter: GDP vs Politicians (bubble = population)
+      const scatterData = byCountry
+        .filter(c => EU_COUNTRY_DATA[c.code])
+        .map(c => {
+          const ref = EU_COUNTRY_DATA[c.code];
+          return {
+            name: c.code,
+            fullName: c.name,
+            gdp: ref.gdp,
+            politicians: c.count,
+            population: ref.population / 1_000_000,
+          };
+        });
+
+      // Representation index: normalized score combining per-capita and per-GDP
+      const maxPerCap = Math.max(...perCapita.map(c => c.perMillion));
+      const maxPerGdp = Math.max(...perGdp.map(c => c.perBillion));
+      const representationIndex = byCountry
+        .filter(c => EU_COUNTRY_DATA[c.code])
+        .map(c => {
+          const ref = EU_COUNTRY_DATA[c.code];
+          const pCap = (c.count / ref.population) * 1_000_000;
+          const pGdp = c.count / ref.gdp;
+          const pArea = (c.count / ref.area) * 10_000;
+          return {
+            name: c.code,
+            fullName: c.name,
+            perCapita: parseFloat(((pCap / maxPerCap) * 100).toFixed(0)),
+            perGdp: parseFloat(((pGdp / maxPerGdp) * 100).toFixed(0)),
+            density: parseFloat(Math.min(100, pArea * 5).toFixed(0)),
+            absolute: parseFloat(((c.count / byCountry[0].count) * 100).toFixed(0)),
+          };
+        })
+        .sort((a, b) => (b.perCapita + b.perGdp) - (a.perCapita + a.perGdp))
+        .slice(0, 8);
+
+      // GDP per politician (how much economic output per tracked politician)
+      const gdpPerPol = byCountry
+        .filter(c => EU_COUNTRY_DATA[c.code] && c.count > 0)
+        .map(c => {
+          const ref = EU_COUNTRY_DATA[c.code];
+          return {
+            name: c.code,
+            fullName: c.name,
+            gdpPerPolitician: parseFloat((ref.gdp / c.count).toFixed(1)),
+          };
+        })
+        .sort((a, b) => b.gdpPerPolitician - a.gdpPerPolitician);
 
       return {
         totalPoliticians: politicians.count || 0,
@@ -125,7 +227,11 @@ function useDataStats() {
         byGroup,
         byJurisdiction,
         byEventType,
-        treemapData,
+        perCapita,
+        perGdp,
+        scatterData,
+        representationIndex,
+        gdpPerPol,
       };
     },
   });
@@ -147,6 +253,54 @@ const PieTooltip = ({ active, payload }: any) => {
     <div className="brutalist-border bg-background p-2 text-xs font-mono">
       <p className="font-bold">{payload[0]?.name}</p>
       <p>{payload[0]?.value} ({((payload[0]?.value / payload[0]?.payload?.total) * 100).toFixed(1)}%)</p>
+    </div>
+  );
+};
+
+const ScatterTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  return (
+    <div className="brutalist-border bg-background p-2 text-xs font-mono space-y-0.5">
+      <p className="font-bold">{d?.fullName}</p>
+      <p>GDP: ${d?.gdp}B</p>
+      <p>Politicians: {d?.politicians}</p>
+      <p>Population: {d?.population?.toFixed(1)}M</p>
+    </div>
+  );
+};
+
+const PerCapitaTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  return (
+    <div className="brutalist-border bg-background p-2 text-xs font-mono">
+      <p className="font-bold">{d?.fullName || label}</p>
+      <p>{payload[0]?.value} per million people</p>
+      <p className="text-muted-foreground">{d?.count} politicians / {(d?.population / 1_000_000).toFixed(1)}M pop</p>
+    </div>
+  );
+};
+
+const PerGdpTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  return (
+    <div className="brutalist-border bg-background p-2 text-xs font-mono">
+      <p className="font-bold">{d?.fullName || label}</p>
+      <p>{payload[0]?.value} per $B GDP</p>
+      <p className="text-muted-foreground">{d?.count} politicians / ${d?.gdp}B GDP</p>
+    </div>
+  );
+};
+
+const GdpPerPolTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  return (
+    <div className="brutalist-border bg-background p-2 text-xs font-mono">
+      <p className="font-bold">{d?.fullName || label}</p>
+      <p>${payload[0]?.value}B GDP per politician</p>
     </div>
   );
 };
@@ -208,22 +362,15 @@ const Data = () => {
           <StatCard label="MEPs" value={stats.byJurisdiction.find(j => j.name === 'Eu')?.count || 0} />
         </div>
 
-        {/* Row 1: Politicians per Country (bar chart) */}
+        {/* Row 1: Politicians per Country */}
         <section>
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">POLITICIANS PER COUNTRY</h2>
           <div className="brutalist-border bg-card p-4">
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={stats.byCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="code"
-                  angle={-45}
-                  textAnchor="end"
-                  interval={0}
-                  tick={{ fontSize: 11, fontFamily: 'JetBrains Mono' }}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <YAxis tick={{ fontSize: 11, fontFamily: 'JetBrains Mono' }} stroke="hsl(var(--muted-foreground))" />
+                <XAxis dataKey="code" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
               </BarChart>
@@ -231,7 +378,98 @@ const Data = () => {
           </div>
         </section>
 
-        {/* Row 2: EP Groups + Jurisdiction */}
+        {/* NEW: Per Capita + Per GDP side by side */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">POLITICIANS PER MILLION PEOPLE</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Political representation density — smaller countries have higher ratios</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={stats.perCapita} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={<PerCapitaTooltip />} />
+                  <Bar dataKey="perMillion" fill="hsl(150, 40%, 40%)" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">POLITICIANS PER $B GDP</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Political density relative to economic output</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={stats.perGdp} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={<PerGdpTooltip />} />
+                  <Bar dataKey="perBillion" fill="hsl(45, 70%, 50%)" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </div>
+
+        {/* NEW: GDP vs Politicians Scatter */}
+        <section>
+          <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">GDP vs POLITICAL REPRESENTATION</h2>
+          <p className="text-xs font-mono text-muted-foreground mb-4">Bubble size = population (millions). Shows whether richer countries have proportionally more tracked politicians</p>
+          <div className="brutalist-border bg-card p-4">
+            <ResponsiveContainer width="100%" height={420}>
+              <ScatterChart margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis type="number" dataKey="gdp" name="GDP ($B)" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" label={{ value: 'GDP ($B)', position: 'insideBottom', offset: -5, style: { fontSize: 11, fontFamily: 'monospace' } }} />
+                <YAxis type="number" dataKey="politicians" name="Politicians" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" label={{ value: 'Politicians', angle: -90, position: 'insideLeft', style: { fontSize: 11, fontFamily: 'monospace' } }} />
+                <ZAxis type="number" dataKey="population" range={[40, 400]} />
+                <Tooltip content={<ScatterTooltip />} />
+                <Scatter data={stats.scatterData} fill="hsl(var(--primary))" fillOpacity={0.7} stroke="hsl(var(--primary))" strokeWidth={1} />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        {/* NEW: GDP per Politician */}
+        <section>
+          <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">GDP PER TRACKED POLITICIAN ($B)</h2>
+          <p className="text-xs font-mono text-muted-foreground mb-4">Economic output per politician — higher means fewer politicians relative to GDP</p>
+          <div className="brutalist-border bg-card p-4">
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={stats.gdpPerPol} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                <Tooltip content={<GdpPerPolTooltip />} />
+                <Bar dataKey="gdpPerPolitician" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        {/* NEW: Representation Radar */}
+        <section>
+          <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">REPRESENTATION INDEX — TOP 8 COUNTRIES</h2>
+          <p className="text-xs font-mono text-muted-foreground mb-4">Normalized scores across per-capita, per-GDP, density, and absolute count</p>
+          <div className="brutalist-border bg-card p-4">
+            <ResponsiveContainer width="100%" height={420}>
+              <RadarChart data={stats.representationIndex}>
+                <PolarGrid stroke="hsl(var(--border))" />
+                <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fontFamily: 'monospace', fill: 'hsl(var(--foreground))' }} />
+                <PolarRadiusAxis tick={{ fontSize: 9, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                <Radar name="Per Capita" dataKey="perCapita" stroke="hsl(150, 40%, 40%)" fill="hsl(150, 40%, 40%)" fillOpacity={0.15} />
+                <Radar name="Per GDP" dataKey="perGdp" stroke="hsl(45, 70%, 50%)" fill="hsl(45, 70%, 50%)" fillOpacity={0.15} />
+                <Radar name="Density" dataKey="density" stroke="hsl(280, 30%, 50%)" fill="hsl(280, 30%, 50%)" fillOpacity={0.15} />
+                <Radar name="Absolute" dataKey="absolute" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} />
+                <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
+                <Tooltip />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        {/* Row: EP Groups + Jurisdiction */}
         <div className="grid md:grid-cols-2 gap-6">
           <section>
             <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">EP POLITICAL GROUPS</h2>
@@ -239,14 +477,8 @@ const Data = () => {
               <ResponsiveContainer width="100%" height={380}>
                 <BarChart data={stats.byGroup} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'JetBrains Mono' }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }}
-                    width={80}
-                    stroke="hsl(var(--muted-foreground))"
-                  />
+                  <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={80} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="count" fill="hsl(var(--accent))" radius={[0, 2, 2, 0]} />
                 </BarChart>
@@ -259,55 +491,33 @@ const Data = () => {
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={380}>
                 <PieChart>
-                  <Pie
-                    data={jurisdictionWithTotal}
-                    dataKey="count"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={140}
-                    label={renderCustomLabel}
-                    labelLine={false}
-                  >
+                  <Pie data={jurisdictionWithTotal} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={140} label={renderCustomLabel} labelLine={false}>
                     {jurisdictionWithTotal.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip content={<PieTooltip />} />
-                  <Legend
-                    formatter={(value: string) => <span className="text-xs font-mono">{value}</span>}
-                  />
+                  <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </section>
         </div>
 
-        {/* Row 3: Event Types + Country table */}
+        {/* Event Types + Country table */}
         <div className="grid md:grid-cols-2 gap-6">
           <section>
             <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">EVENT TYPES</h2>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie
-                    data={eventsWithTotal}
-                    dataKey="count"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={110}
-                    label={renderCustomLabel}
-                    labelLine={false}
-                  >
+                  <Pie data={eventsWithTotal} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={110} label={renderCustomLabel} labelLine={false}>
                     {eventsWithTotal.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip content={<PieTooltip />} />
-                  <Legend
-                    formatter={(value: string) => <span className="text-xs font-mono">{value}</span>}
-                  />
+                  <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -321,27 +531,28 @@ const Data = () => {
                   <thead className="sticky top-0 bg-card">
                     <tr className="border-b border-border">
                       <th className="text-left p-2 font-bold">COUNTRY</th>
-                      <th className="text-right p-2 font-bold">CODE</th>
                       <th className="text-right p-2 font-bold">COUNT</th>
-                      <th className="text-left p-2 font-bold w-1/3">DISTRIBUTION</th>
+                      <th className="text-right p-2 font-bold">PER 1M</th>
+                      <th className="text-left p-2 font-bold w-1/4">DIST</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.byCountry.map((c, i) => (
-                      <tr key={i} className="border-b border-border/50 hover:bg-muted/50">
-                        <td className="p-2">{c.name}</td>
-                        <td className="p-2 text-right text-muted-foreground">{c.code}</td>
-                        <td className="p-2 text-right font-bold">{c.count}</td>
-                        <td className="p-2">
-                          <div className="h-3 bg-muted rounded-sm overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-sm"
-                              style={{ width: `${(c.count / stats.byCountry[0].count) * 100}%` }}
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {stats.byCountry.map((c, i) => {
+                      const ref = EU_COUNTRY_DATA[c.code];
+                      const perM = ref ? ((c.count / ref.population) * 1_000_000).toFixed(1) : '—';
+                      return (
+                        <tr key={i} className="border-b border-border/50 hover:bg-muted/50">
+                          <td className="p-2">{c.code} {c.name}</td>
+                          <td className="p-2 text-right font-bold">{c.count}</td>
+                          <td className="p-2 text-right text-muted-foreground">{perM}</td>
+                          <td className="p-2">
+                            <div className="h-3 bg-muted rounded-sm overflow-hidden">
+                              <div className="h-full bg-primary rounded-sm" style={{ width: `${(c.count / stats.byCountry[0].count) * 100}%` }} />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -349,7 +560,7 @@ const Data = () => {
           </section>
         </div>
 
-        {/* Row 4: Top EP Groups table */}
+        {/* EP Groups table */}
         <section>
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">EP GROUP MEMBERSHIP</h2>
           <div className="brutalist-border bg-card overflow-hidden">
@@ -373,13 +584,7 @@ const Data = () => {
                         <td className="p-3 text-right text-muted-foreground">{pct}%</td>
                         <td className="p-3">
                           <div className="h-4 bg-muted rounded-sm overflow-hidden">
-                            <div
-                              className="h-full rounded-sm"
-                              style={{
-                                width: `${(g.count / stats.byGroup[0].count) * 100}%`,
-                                backgroundColor: COLORS[i % COLORS.length],
-                              }}
-                            />
+                            <div className="h-full rounded-sm" style={{ width: `${(g.count / stats.byGroup[0].count) * 100}%`, backgroundColor: COLORS[i % COLORS.length] }} />
                           </div>
                         </td>
                       </tr>
@@ -391,7 +596,7 @@ const Data = () => {
           </div>
         </section>
 
-        {/* Data freshness */}
+        {/* Data Sources */}
         <section>
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">DATA SOURCES</h2>
           <div className="grid sm:grid-cols-3 gap-3">
