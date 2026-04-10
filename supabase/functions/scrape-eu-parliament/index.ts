@@ -6,13 +6,6 @@ const corsHeaders = {
 };
 
 const EU_API = "https://data.europarl.europa.eu/api/v2";
-const FETCH_TIMEOUT = 25000; // 25s timeout per external request
-
-function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = FETCH_TIMEOUT): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -20,13 +13,11 @@ Deno.serve(async (req) => {
   }
 
   let offset = 0;
-  let limit = 20;
-  let enrichDetails = true;
+  let limit = 10;
   try {
     const body = await req.json();
     offset = body.offset || 0;
-    limit = Math.min(body.limit || 20, 50);
-    enrichDetails = body.enrichDetails !== false;
+    limit = Math.min(body.limit || 10, 20);
   } catch { /* defaults */ }
 
   const supabase = createClient(
@@ -45,35 +36,34 @@ Deno.serve(async (req) => {
   let recordsUpdated = 0;
 
   try {
-    // Step 1: Fetch MEP list with pagination
-    console.log(`Fetching MEPs offset=${offset} limit=${limit}...`);
-    const mepsRes = await fetchWithTimeout(
-      `${EU_API}/meps/show-current?format=application%2Fld%2Bjson&offset=${offset}&limit=${limit}`,
-      { headers: { Accept: "application/ld+json" } }
-    );
+    // Use JSON format (much smaller than JSON-LD)
+    const url = `${EU_API}/meps/show-current?format=application%2Fld%2Bjson&offset=${offset}&limit=${limit}`;
+    console.log(`Fetching MEPs: offset=${offset} limit=${limit}`);
+    
+    const mepsRes = await fetch(url, {
+      headers: { Accept: "application/ld+json" },
+      signal: AbortSignal.timeout(40000),
+    });
 
     if (!mepsRes.ok) {
-      throw new Error(`EU API error: ${mepsRes.status}`);
+      throw new Error(`EU API returned ${mepsRes.status}`);
     }
 
     const mepsData = await mepsRes.json();
     const mepRefs = mepsData?.data || mepsData?.["hydra:member"] || [];
     recordsFetched = mepRefs.length;
-    console.log(`Got ${mepRefs.length} MEP refs`);
+    console.log(`Got ${mepRefs.length} MEP references`);
 
-    // Step 2: Upsert each MEP from list data (fast, no individual API calls)
     for (const ref of mepRefs) {
       const externalId = ref.identifier || ref.notation || ref["@id"]?.split("/").pop();
       if (!externalId) continue;
 
-      // Try multiple name fields
       let name = ref.label || ref.prefLabel || "";
       if (!name && (ref.givenName || ref.familyName)) {
         name = `${ref.givenName || ""} ${ref.familyName || ""}`.trim();
       }
       if (!name) name = `MEP ${externalId}`;
 
-      // Extract country code from URI or direct field
       let countryCode = "";
       const countryField = ref.countryOfRepresentation || ref.country_of_representation || "";
       if (typeof countryField === "string" && countryField.includes("/")) {
@@ -110,59 +100,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 3: Enrich a small batch of MEPs that lack party info (optional)
-    if (enrichDetails) {
-      const { data: mepsNeedingDetails } = await supabase
-        .from("politicians")
-        .select("id, external_id")
-        .eq("data_source", "eu_parliament")
-        .is("party_name", null)
-        .limit(5);
-
-      if (mepsNeedingDetails && mepsNeedingDetails.length > 0) {
-        console.log(`Enriching ${mepsNeedingDetails.length} MEPs with details...`);
-        for (const mep of mepsNeedingDetails) {
-          try {
-            const detailRes = await fetchWithTimeout(
-              `${EU_API}/meps/${mep.external_id}?format=application%2Fld%2Bjson`,
-              { headers: { Accept: "application/ld+json" } },
-              10000 // 10s per detail request
-            );
-            if (!detailRes.ok) continue;
-            const detail = await detailRes.json();
-            const d = detail.data || detail;
-
-            const memberships = Array.isArray(d.hasMembership)
-              ? d.hasMembership
-              : d.hasMembership ? [d.hasMembership] : [];
-            const partyMembership = memberships.find(
-              (m: any) => m.organization?.classification === "POLITICAL_GROUP"
-            );
-            const committees = memberships
-              .filter((m: any) => m.organization?.classification === "COMMITTEE")
-              .map((m: any) => m.organization?.prefLabel || m.organization?.label)
-              .filter(Boolean);
-
-            const twitterAccount = Array.isArray(d.account)
-              ? d.account.find((a: any) => a.accountServiceHomepage?.includes("twitter"))
-              : null;
-
-            await supabase.from("politicians").update({
-              party_name: partyMembership?.organization?.prefLabel
-                || partyMembership?.organization?.label || null,
-              committees: committees.length > 0 ? committees : undefined,
-              photo_url: d.img || d.image || undefined,
-              twitter_handle: twitterAccount?.accountName || undefined,
-            }).eq("id", mep.id);
-          } catch (e) {
-            console.error(`Detail fetch failed for ${mep.external_id}:`, e);
-          }
-          await new Promise(r => setTimeout(r, 200));
-        }
-      }
-    }
-
-    // Finalize
     await supabase.from("scrape_runs").update({
       status: "completed",
       records_fetched: recordsFetched,
@@ -176,15 +113,12 @@ Deno.serve(async (req) => {
       total_records: recordsFetched,
     }).eq("source_type", "eu_parliament");
 
-    const hasMore = mepRefs.length === limit;
-
     return new Response(JSON.stringify({
       success: true,
       meps_found: recordsFetched,
       created: recordsCreated,
       updated: recordsUpdated,
-      next_offset: hasMore ? offset + limit : null,
-      has_more: hasMore,
+      next_offset: mepRefs.length === limit ? offset + limit : null,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error) {
