@@ -1,11 +1,24 @@
 import { useParams, Link } from 'react-router-dom';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
-import { mockProposals, statusLabels } from '@/data/mockData';
+import { useProposal, statusLabels, statusColors } from '@/hooks/use-proposals';
+import { ExternalLink } from 'lucide-react';
 
 const ProposalDetail = () => {
   const { id } = useParams();
-  const proposal = mockProposals.find((p) => p.id === id);
+  const { data: proposal, isLoading } = useProposal(id);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <SiteHeader />
+        <main className="container flex-1 py-8">
+          <p className="font-mono text-sm text-muted-foreground">Loading...</p>
+        </main>
+        <SiteFooter />
+      </div>
+    );
+  }
 
   if (!proposal) {
     return (
@@ -32,74 +45,101 @@ const ProposalDetail = () => {
 
         <div className="brutalist-border-b pb-4 mb-6">
           <div className="flex gap-2 mb-2 flex-wrap">
-            <span className="evidence-tag bg-destructive/10">{statusLabels[proposal.status]}</span>
-            <span className="evidence-tag">{proposal.type.toUpperCase()}</span>
+            <span className={`evidence-tag ${statusColors[proposal.status] || 'bg-muted'}`}>
+              {statusLabels[proposal.status] || proposal.status.toUpperCase()}
+            </span>
+            <span className="evidence-tag">{proposal.proposal_type.toUpperCase()}</span>
+            <span className="evidence-tag">{proposal.country_code}</span>
             <span className="evidence-tag">{proposal.jurisdiction.toUpperCase()}</span>
+            {proposal.policy_area && (
+              <span className="evidence-tag bg-primary/5">{proposal.policy_area.replace(/_/g, ' ').toUpperCase()}</span>
+            )}
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight mb-1">{proposal.title}</h1>
-          <p className="text-sm font-mono text-muted-foreground">{proposal.officialTitle}</p>
+          <p className="text-sm font-mono text-muted-foreground">{proposal.official_title}</p>
         </div>
 
         {/* Summary */}
-        <section className="mb-6">
-          <h2 className="text-xs font-mono font-bold text-muted-foreground mb-2">SUMMARY</h2>
-          <p className="text-sm leading-relaxed">{proposal.summary}</p>
-          <span className="evidence-fact mt-2 inline-block">FACT · official source</span>
-        </section>
+        {proposal.summary && (
+          <section className="mb-6">
+            <h2 className="text-xs font-mono font-bold text-muted-foreground mb-2">SUMMARY</h2>
+            <p className="text-sm leading-relaxed">{proposal.summary}</p>
+            <span className="evidence-fact mt-2 inline-block">FACT · official source</span>
+          </section>
+        )}
 
         {/* Key details */}
         <section className="brutalist-border p-4 mb-6">
           <h2 className="text-xs font-mono font-bold mb-3">KEY DETAILS</h2>
           <div className="space-y-2 font-mono text-xs">
-            {proposal.voteDate && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Country</span>
+              <span className="font-bold">{proposal.country_name} ({proposal.country_code})</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Jurisdiction</span>
+              <span>{proposal.jurisdiction}</span>
+            </div>
+            {proposal.vote_date && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Vote date</span>
-                <span className="font-bold">{proposal.voteDate}</span>
+                <span className="font-bold">{proposal.vote_date}</span>
               </div>
             )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Submitted</span>
-              <span>{proposal.submittedDate}</span>
+              <span>{proposal.submitted_date}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Sponsors</span>
-              <span>{proposal.sponsors.join(', ')}</span>
-            </div>
+            {proposal.sponsors.length > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Sponsors</span>
+                <span className="text-right max-w-[300px]">{proposal.sponsors.join(', ')}</span>
+              </div>
+            )}
+            {proposal.policy_area && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Policy area</span>
+                <span className="capitalize">{proposal.policy_area.replace(/_/g, ' ')}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Evidence packets</span>
-              <span className="font-bold">{proposal.evidenceCount}</span>
+              <span className="font-bold">{proposal.evidence_count}</span>
             </div>
           </div>
         </section>
 
         {/* Affected laws */}
-        <section className="mb-6">
-          <h2 className="text-xs font-mono font-bold text-muted-foreground mb-2">AFFECTED LAWS</h2>
-          <div className="space-y-1">
-            {proposal.affectedLaws.map((law) => (
-              <div key={law} className="font-mono text-sm brutalist-border px-3 py-1.5 bg-secondary">
-                {law}
-              </div>
-            ))}
-          </div>
-        </section>
+        {proposal.affected_laws.length > 0 && (
+          <section className="mb-6">
+            <h2 className="text-xs font-mono font-bold text-muted-foreground mb-2">AFFECTED LAWS</h2>
+            <div className="space-y-1">
+              {proposal.affected_laws.map((law) => (
+                <div key={law} className="font-mono text-sm brutalist-border px-3 py-1.5 bg-secondary">
+                  {law}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
-        {/* Legal diff placeholder */}
-        <section className="mb-6">
-          <h2 className="text-xs font-mono font-bold text-muted-foreground mb-2">LEGAL DIFF</h2>
-          <div className="brutalist-border p-4 font-mono text-xs space-y-1">
-            <div className="diff-removed">- Art. 14 Abs. 2: Der Umwandlungssatz beträgt 6,8 Prozent.</div>
-            <div className="diff-added">+ Art. 14 Abs. 2: Der Umwandlungssatz beträgt 6,0 Prozent.</div>
-            <div className="mt-2 text-muted-foreground">// Placeholder diff — full legal text comparison pending ingestion.</div>
-          </div>
-        </section>
+        {/* Source link */}
+        {proposal.source_url && (
+          <section className="mb-6">
+            <a href={proposal.source_url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-mono text-accent hover:underline">
+              <ExternalLink className="w-3 h-3" /> View official source
+            </a>
+          </section>
+        )}
 
         {/* Revision info */}
         <section className="brutalist-border-t pt-4 mt-8">
           <div className="font-mono text-xs text-muted-foreground flex flex-wrap gap-4">
-            <span>revision: {proposal.revisionId}</span>
-            <span>sources: {proposal.evidenceCount}</span>
+            <span>id: {proposal.id.slice(0, 8)}</span>
+            <span>sources: {proposal.evidence_count}</span>
             <span>status: {proposal.status}</span>
+            <span>updated: {new Date(proposal.updated_at).toLocaleDateString()}</span>
           </div>
         </section>
       </main>

@@ -1,12 +1,16 @@
+import { Link } from 'react-router-dom';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import SearchBar from '@/components/SearchBar';
 import ActorCard from '@/components/ActorCard';
+import ProposalCard from '@/components/ProposalCard';
 import { usePoliticians, useCountryStats } from '@/hooks/use-politicians';
+import { useProposals } from '@/hooks/use-proposals';
 
 const Index = () => {
   const { data: actors = [] } = usePoliticians();
   const { data: countryStats = [] } = useCountryStats();
+  const { data: proposals = [] } = useProposals();
   const totalParties = new Set(countryStats.flatMap(c => c.parties)).size;
 
   return (
@@ -41,13 +45,37 @@ const Index = () => {
                   <span className="font-bold text-foreground">{countryStats.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Actors indexed</span>
+                  <span>Politicians indexed</span>
                   <span className="font-bold text-foreground">{actors.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Parties tracked</span>
                   <span className="font-bold text-foreground">{totalParties}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span>Proposals tracked</span>
+                  <span className="font-bold text-foreground">{proposals.length}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Proposals */}
+            <div>
+              <div className="flex items-baseline justify-between brutalist-border-b pb-2 mb-4">
+                <h2 className="text-sm font-extrabold tracking-tight">LATEST PROPOSALS</h2>
+                <Link to="/proposals" className="text-xs font-mono text-accent hover:underline">View all →</Link>
+              </div>
+              <div className="space-y-2">
+                {proposals.slice(0, 5).map(p => (
+                  <Link key={p.id} to={`/proposals/${p.id}`} className="block brutalist-border px-3 py-2 hover:bg-secondary transition-colors">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="evidence-tag text-[9px]">{p.country_code}</span>
+                      <span className="evidence-tag text-[9px]">{p.status.toUpperCase()}</span>
+                    </div>
+                    <div className="font-mono text-xs font-bold truncate">{p.title}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{p.country_name}</div>
+                  </Link>
+                ))}
               </div>
             </div>
 
@@ -60,10 +88,10 @@ const Index = () => {
                   .sort((a, b) => b.actorCount - a.actorCount)
                   .slice(0, 10)
                   .map(c => (
-                    <div key={c.code} className="brutalist-border px-3 py-2 flex items-center justify-between">
+                    <Link key={c.code} to={`/country/${c.code.toLowerCase()}`} className="block brutalist-border px-3 py-2 flex items-center justify-between hover:bg-secondary transition-colors">
                       <span className="font-mono text-xs font-bold">{c.code} · {c.name}</span>
                       <span className="evidence-tag">{c.actorCount} actors</span>
-                    </div>
+                    </Link>
                   ))}
               </div>
             </div>
