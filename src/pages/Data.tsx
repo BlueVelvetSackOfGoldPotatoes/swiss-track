@@ -991,24 +991,23 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">How politician salaries are distributed across income brackets</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.salaryDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-                  onClick={(d) => {
-                    const p = d?.activePayload?.[0]?.payload;
-                    if (!p) return;
-                    setDetail({
-                      title: `Salary Range: ${p.name}`,
-                      rows: [
-                        { label: 'Politicians', value: p.count },
-                        { label: 'Range', value: p.name },
-                        { label: 'Share', value: `${((p.count / stats.salaryDistribution.reduce((s: number, b: any) => s + b.count, 0)) * 100).toFixed(1)}%` },
-                      ],
-                    });
-                  }}>
+                <BarChart data={stats.salaryDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip content={<RichBarTooltip totalValue={stats.salaryDistribution.reduce((s: any, b: any) => s + b.count, 0)} totalLabel="Total with salary data" />} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} className="cursor-pointer" />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} className="cursor-pointer"
+                    onClick={(p: any) => {
+                      if (!p) return;
+                      setDetail({
+                        title: `Salary Range: ${p.name}`,
+                        rows: [
+                          { label: 'Politicians', value: p.count },
+                          { label: 'Range', value: p.name },
+                          { label: 'Share', value: `${((p.count / stats.salaryDistribution.reduce((s: number, b: any) => s + b.count, 0)) * 100).toFixed(1)}%` },
+                        ],
+                      });
+                    }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1019,24 +1018,23 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">EP Parliament vs National Government compensation</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.avgSalaryBySource} layout="vertical" margin={{ top: 5, right: 20, left: 120, bottom: 5 }}
-                  onClick={(d) => {
-                    const p = d?.activePayload?.[0]?.payload;
-                    if (!p) return;
-                    setDetail({
-                      title: `Salary Source: ${p.name}`,
-                      rows: [
-                        { label: 'Average Salary', value: `€${p.avgSalary.toLocaleString()}` },
-                        { label: 'Sample Size', value: `${p.count} politicians` },
-                        { label: 'Source', value: p.name },
-                      ],
-                    });
-                  }}>
+                <BarChart data={stats.avgSalaryBySource} layout="vertical" margin={{ top: 5, right: 20, left: 120, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={120} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip content={<RichBarTooltip />} />
-                  <Bar dataKey="avgSalary" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} className="cursor-pointer" />
+                  <Bar dataKey="avgSalary" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} className="cursor-pointer"
+                    onClick={(p: any) => {
+                      if (!p) return;
+                      setDetail({
+                        title: `Salary Source: ${p.name}`,
+                        rows: [
+                          { label: 'Average Salary', value: `€${p.avgSalary.toLocaleString()}` },
+                          { label: 'Sample Size', value: `${p.count} politicians` },
+                          { label: 'Source', value: p.name },
+                        ],
+                      });
+                    }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1110,24 +1108,23 @@ const Data = () => {
           <p className="text-xs font-mono text-muted-foreground mb-4">Number of individual investment positions by sector</p>
           <div className="brutalist-border bg-card p-4">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stats.bySector} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
-                onClick={(d) => {
-                  const p = d?.activePayload?.[0]?.payload;
-                  if (!p) return;
-                  setDetail({
-                    title: `Sector: ${p.name}`,
-                    rows: [
-                      { label: 'Holdings', value: p.count },
-                      { label: 'Total Value', value: `€${(p.value / 1000).toFixed(0)}K` },
-                      { label: 'Avg per Holding', value: p.count > 0 ? `€${(p.value / p.count / 1000).toFixed(0)}K` : '—' },
-                    ],
-                  });
-                }}>
+              <BarChart data={stats.bySector} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" angle={-30} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip content={<RichBarTooltip totalValue={stats.totalInvestments} totalLabel="Total Holdings" />} />
-                <Bar dataKey="count" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} className="cursor-pointer" />
+                <Bar dataKey="count" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} className="cursor-pointer"
+                  onClick={(p: any) => {
+                    if (!p) return;
+                    setDetail({
+                      title: `Sector: ${p.name}`,
+                      rows: [
+                        { label: 'Holdings', value: p.count },
+                        { label: 'Total Value', value: `€${(p.value / 1000).toFixed(0)}K` },
+                        { label: 'Avg per Holding', value: p.count > 0 ? `€${(p.value / p.count / 1000).toFixed(0)}K` : '—' },
+                      ],
+                    });
+                  }} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1193,24 +1190,23 @@ const Data = () => {
               <p className="text-xs text-muted-foreground mb-2">Number of politicians per ideology family</p>
               <div className="brutalist-border bg-card p-4">
                 <ResponsiveContainer width="100%" height={350}>
-                  <BarChart data={stats.byIdeology} layout="vertical" margin={{ top: 5, right: 20, left: 5, bottom: 5 }}
-                    onClick={(d) => {
-                      const p = d?.activePayload?.[0]?.payload;
-                      if (!p) return;
-                      setDetail({
-                        title: `Ideology: ${p.name}`,
-                        rows: [
-                          { label: 'Politicians', value: p.count },
-                          { label: 'Share', value: `${((p.count / stats.totalPositions) * 100).toFixed(1)}%`, bar: (p.count / stats.totalPositions) * 100 },
-                          { label: 'Total Mapped', value: stats.totalPositions },
-                        ],
-                      });
-                    }}>
+                  <BarChart data={stats.byIdeology} layout="vertical" margin={{ top: 5, right: 20, left: 5, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis type="category" dataKey="name" width={160} tick={{ fontSize: 9, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip content={<RichBarTooltip totalValue={stats.totalPositions} totalLabel="Total Mapped" />} />
-                    <Bar dataKey="count" radius={[0, 2, 2, 0]} className="cursor-pointer">
+                    <Bar dataKey="count" radius={[0, 2, 2, 0]} className="cursor-pointer"
+                      onClick={(p: any) => {
+                        if (!p) return;
+                        setDetail({
+                          title: `Ideology: ${p.name}`,
+                          rows: [
+                            { label: 'Politicians', value: p.count },
+                            { label: 'Share', value: `${((p.count / stats.totalPositions) * 100).toFixed(1)}%`, bar: (p.count / stats.totalPositions) * 100 },
+                            { label: 'Total Mapped', value: stats.totalPositions },
+                          ],
+                        });
+                      }}>
                       {stats.byIdeology.map((d: any, i: number) => (
                         <Cell key={i} fill={IDEOLOGY_COLORS[d.name] || COLORS[i % COLORS.length]} />
                       ))}
@@ -1264,26 +1260,25 @@ const Data = () => {
               <p className="text-xs text-muted-foreground mb-2">Distribution of pro-EU vs eurosceptic positions</p>
               <div className="brutalist-border bg-card p-4">
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.euDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
-                    onClick={(d) => {
-                      const p = d?.activePayload?.[0]?.payload;
-                      if (!p) return;
-                      const euTotal = stats.euDistribution.reduce((s: number, b: any) => s + b.count, 0);
-                      setDetail({
-                        title: `EU Stance: ${p.name}`,
-                        rows: [
-                          { label: 'Politicians', value: p.count },
-                          { label: 'Share', value: `${((p.count / euTotal) * 100).toFixed(1)}%`, bar: (p.count / euTotal) * 100 },
-                          { label: 'Category', value: p.name },
-                          { label: 'Total Mapped', value: euTotal },
-                        ],
-                      });
-                    }}>
+                  <BarChart data={stats.euDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="name" angle={-25} textAnchor="end" interval={0} tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip content={<RichBarTooltip totalValue={stats.euDistribution.reduce((s: any, b: any) => s + b.count, 0)} totalLabel="Total Mapped" />} />
-                    <Bar dataKey="count" radius={[2, 2, 0, 0]} className="cursor-pointer">
+                    <Bar dataKey="count" radius={[2, 2, 0, 0]} className="cursor-pointer"
+                      onClick={(p: any) => {
+                        if (!p) return;
+                        const euTotal = stats.euDistribution.reduce((s: number, b: any) => s + b.count, 0);
+                        setDetail({
+                          title: `EU Stance: ${p.name}`,
+                          rows: [
+                            { label: 'Politicians', value: p.count },
+                            { label: 'Share', value: `${((p.count / euTotal) * 100).toFixed(1)}%`, bar: (p.count / euTotal) * 100 },
+                            { label: 'Category', value: p.name },
+                            { label: 'Total Mapped', value: euTotal },
+                          ],
+                        });
+                      }}>
                       {stats.euDistribution.map((_: any, i: number) => {
                         const euColors = ['hsl(0, 55%, 45%)', 'hsl(25, 60%, 50%)', 'hsl(0, 0%, 55%)', 'hsl(215, 45%, 50%)', 'hsl(215, 60%, 40%)'];
                         return <Cell key={i} fill={euColors[i]} />;
