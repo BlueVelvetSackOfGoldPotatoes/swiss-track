@@ -2,16 +2,21 @@ import { useState } from 'react';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import ActorCard from '@/components/ActorCard';
-import { mockActors, countries } from '@/data/mockData';
+import { usePoliticians } from '@/hooks/use-politicians';
 
 const Actors = () => {
   const [countryFilter, setCountryFilter] = useState<string>('all');
+  const { data: actors = [], isLoading } = usePoliticians();
 
   const filtered = countryFilter === 'all'
-    ? mockActors
-    : mockActors.filter(a => a.countryId === countryFilter);
+    ? actors
+    : actors.filter(a => a.countryId === countryFilter);
 
-  const activeCountries = [...new Set(mockActors.map(a => a.countryId))];
+  const countryCounts = actors.reduce<Record<string, { code: string; count: number }>>((acc, a) => {
+    if (!acc[a.countryId]) acc[a.countryId] = { code: a.countryId.toUpperCase(), count: 0 };
+    acc[a.countryId].count++;
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -24,34 +29,37 @@ const Actors = () => {
           </p>
         </div>
 
-        {/* Country filter */}
-        <div className="flex flex-wrap gap-1 mb-6">
-          <button
-            onClick={() => setCountryFilter('all')}
-            className={`evidence-tag text-xs cursor-pointer ${countryFilter === 'all' ? 'bg-primary text-primary-foreground' : ''}`}
-          >
-            ALL ({mockActors.length})
-          </button>
-          {activeCountries.map(cId => {
-            const c = countries.find(x => x.id === cId);
-            const count = mockActors.filter(a => a.countryId === cId).length;
-            return (
+        {isLoading ? (
+          <div className="font-mono text-sm text-muted-foreground">Loading politicians...</div>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-1 mb-6">
               <button
-                key={cId}
-                onClick={() => setCountryFilter(cId)}
-                className={`evidence-tag text-xs cursor-pointer ${countryFilter === cId ? 'bg-primary text-primary-foreground' : ''}`}
+                onClick={() => setCountryFilter('all')}
+                className={`evidence-tag text-xs cursor-pointer ${countryFilter === 'all' ? 'bg-primary text-primary-foreground' : ''}`}
               >
-                {c?.code} ({count})
+                ALL ({actors.length})
               </button>
-            );
-          })}
-        </div>
+              {Object.entries(countryCounts)
+                .sort(([, a], [, b]) => b.count - a.count)
+                .map(([id, { code, count }]) => (
+                  <button
+                    key={id}
+                    onClick={() => setCountryFilter(id)}
+                    className={`evidence-tag text-xs cursor-pointer ${countryFilter === id ? 'bg-primary text-primary-foreground' : ''}`}
+                  >
+                    {code} ({count})
+                  </button>
+                ))}
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((a) => (
-            <ActorCard key={a.id} actor={a} />
-          ))}
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((a) => (
+                <ActorCard key={a.id} actor={a} />
+              ))}
+            </div>
+          </>
+        )}
       </main>
       <SiteFooter />
     </div>
