@@ -120,6 +120,7 @@ export type Database = {
       }
       politicians: {
         Row: {
+          biography: string | null
           birth_year: number | null
           city: string | null
           committees: string[] | null
@@ -128,6 +129,7 @@ export type Database = {
           country_name: string
           created_at: string
           data_source: Database["public"]["Enums"]["data_source_type"] | null
+          enriched_at: string | null
           external_id: string | null
           id: string
           in_office_since: string | null
@@ -142,8 +144,13 @@ export type Database = {
           top_donors: string[] | null
           twitter_handle: string | null
           updated_at: string
+          wikipedia_data: Json | null
+          wikipedia_image_url: string | null
+          wikipedia_summary: string | null
+          wikipedia_url: string | null
         }
         Insert: {
+          biography?: string | null
           birth_year?: number | null
           city?: string | null
           committees?: string[] | null
@@ -152,6 +159,7 @@ export type Database = {
           country_name: string
           created_at?: string
           data_source?: Database["public"]["Enums"]["data_source_type"] | null
+          enriched_at?: string | null
           external_id?: string | null
           id?: string
           in_office_since?: string | null
@@ -166,8 +174,13 @@ export type Database = {
           top_donors?: string[] | null
           twitter_handle?: string | null
           updated_at?: string
+          wikipedia_data?: Json | null
+          wikipedia_image_url?: string | null
+          wikipedia_summary?: string | null
+          wikipedia_url?: string | null
         }
         Update: {
+          biography?: string | null
           birth_year?: number | null
           city?: string | null
           committees?: string[] | null
@@ -176,6 +189,7 @@ export type Database = {
           country_name?: string
           created_at?: string
           data_source?: Database["public"]["Enums"]["data_source_type"] | null
+          enriched_at?: string | null
           external_id?: string | null
           id?: string
           in_office_since?: string | null
@@ -190,6 +204,10 @@ export type Database = {
           top_donors?: string[] | null
           twitter_handle?: string | null
           updated_at?: string
+          wikipedia_data?: Json | null
+          wikipedia_image_url?: string | null
+          wikipedia_summary?: string | null
+          wikipedia_url?: string | null
         }
         Relationships: []
       }
