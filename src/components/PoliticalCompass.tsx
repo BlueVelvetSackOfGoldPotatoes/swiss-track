@@ -1,4 +1,4 @@
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell, Label } from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Label } from 'recharts';
 
 export interface PoliticalPosition {
   id: string;
@@ -31,6 +31,18 @@ const IDEOLOGY_COLORS: Record<string, string> = {
   'Centrist / Unclassified': 'hsl(0, 0%, 55%)',
 };
 
+// Ideal economic score (x-axis) for each ideology family
+const IDEOLOGY_IDEAL_X: Record<string, number> = {
+  'Democratic Socialist': -7,
+  'Social Democrat': -4,
+  'Green / Ecologist': -3,
+  'Liberal': 1,
+  'Centrist / Unclassified': 0,
+  'Christian Democrat / Centre-Right': 4,
+  'National Conservative': 5,
+  'Right-Wing Populist': 3,
+};
+
 function getIdeologyColor(label: string | null): string {
   return IDEOLOGY_COLORS[label || ''] || 'hsl(0, 0%, 55%)';
 }
@@ -39,10 +51,10 @@ interface CompassProps {
   positions: Array<PoliticalPosition & { name?: string }>;
   highlightId?: string;
   height?: number;
+  showIdeologyLines?: boolean;
 }
 
-export function PoliticalCompassChart({ positions, highlightId, height = 400 }: CompassProps) {
-  // Split into background and highlighted point
+export function PoliticalCompassChart({ positions, highlightId, height = 400, showIdeologyLines = true }: CompassProps) {
   const bgData = positions
     .filter(p => !highlightId || p.politician_id !== highlightId)
     .map(p => ({
@@ -62,6 +74,9 @@ export function PoliticalCompassChart({ positions, highlightId, height = 400 }: 
         id: p.politician_id,
       }))
     : [];
+
+  // Determine which ideologies are present in data
+  const presentIdeologies = new Set(positions.map(p => p.ideology_label).filter(Boolean));
 
   const renderTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.[0]) return null;
@@ -103,14 +118,32 @@ export function PoliticalCompassChart({ positions, highlightId, height = 400 }: 
           tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))">
           <Label value="← Liberal — Social — Auth →" angle={-90} position="left" offset={10} style={{ fontSize: 10, fontFamily: 'monospace', fill: 'hsl(var(--muted-foreground))' }} />
         </YAxis>
+
+        {/* Center reference lines */}
         <ReferenceLine x={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeOpacity={0.5} />
         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeOpacity={0.5} />
+
+        {/* Ideology ideal position lines */}
+        {showIdeologyLines && Object.entries(IDEOLOGY_IDEAL_X)
+          .filter(([label]) => presentIdeologies.has(label))
+          .map(([label, xPos]) => (
+            <ReferenceLine
+              key={label}
+              x={xPos}
+              stroke={IDEOLOGY_COLORS[label] || 'hsl(0,0%,50%)'}
+              strokeDasharray="8 4"
+              strokeOpacity={0.45}
+              strokeWidth={1.5}
+            />
+          ))
+        }
+
         <Tooltip content={renderTooltip} />
-        
+
         {/* Background dots */}
         <Scatter data={bgData} shape={<BgDot />} />
 
-        {/* Highlighted politician - rendered on top, larger, with stroke */}
+        {/* Highlighted politician */}
         {highlighted.length > 0 && (
           <Scatter data={highlighted} shape={<HighlightDot />} />
         )}
@@ -126,6 +159,9 @@ export function IdeologyLegend() {
         <div key={label} className="flex items-center gap-1.5 text-[10px] font-mono">
           <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
           {label}
+          {IDEOLOGY_IDEAL_X[label] !== undefined && (
+            <span className="text-muted-foreground ml-0.5">({IDEOLOGY_IDEAL_X[label] > 0 ? '+' : ''}{IDEOLOGY_IDEAL_X[label]})</span>
+          )}
         </div>
       ))}
     </div>

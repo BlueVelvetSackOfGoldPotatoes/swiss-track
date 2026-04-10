@@ -71,9 +71,15 @@ const Index = () => {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="evidence-tag text-[9px]">{p.country_code}</span>
                       <span className="evidence-tag text-[9px]">{p.status.toUpperCase()}</span>
+                      <span className="text-[9px] font-mono text-muted-foreground ml-auto">
+                        {new Date(p.submitted_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
                     </div>
                     <div className="font-mono text-xs font-bold truncate">{p.title}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{p.country_name}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {p.country_name}
+                      {p.sponsors && p.sponsors.length > 0 && ` · ${p.sponsors[0]}${p.sponsors.length > 1 ? ` +${p.sponsors.length - 1}` : ''}`}
+                    </div>
                   </Link>
                 ))}
               </div>
