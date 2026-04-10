@@ -1312,13 +1312,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Legislative activity per jurisdiction</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={stats.proposalsByCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
-                  onClick={(d) => handleBarClick(d, 'Proposals by Country')}>
+                <BarChart data={stats.proposalsByCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="code" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip content={<RichBarTooltip totalValue={stats.totalProposals} totalLabel="Total Proposals" />} />
-                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[2, 2, 0, 0]} className="cursor-pointer" />
+                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[2, 2, 0, 0]} className="cursor-pointer"
+                    onClick={(d, i) => handleBarClick(d, i, 'Proposals by Country')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1329,13 +1329,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Current legislative status of tracked proposals</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={stats.proposalsByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}
-                  onClick={(d) => handleBarClick(d, 'Proposals by Status')}>
+                <BarChart data={stats.proposalsByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={80} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip content={<RichBarTooltip totalValue={stats.totalProposals} totalLabel="Total Proposals" />} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} className="cursor-pointer" />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} className="cursor-pointer"
+                    onClick={(d, i) => handleBarClick(d, i, 'Proposals by Status')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1348,13 +1348,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Distribution of proposals across policy domains</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={stats.proposalsByArea} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}
-                  onClick={(d) => handleBarClick(d, 'Proposals by Policy Area')}>
+                <BarChart data={stats.proposalsByArea} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={100} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip content={<RichBarTooltip totalValue={stats.totalProposals} totalLabel="Total Proposals" />} />
-                  <Bar dataKey="count" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} className="cursor-pointer" />
+                  <Bar dataKey="count" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} className="cursor-pointer"
+                    onClick={(d, i) => handleBarClick(d, i, 'Proposals by Policy Area')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
