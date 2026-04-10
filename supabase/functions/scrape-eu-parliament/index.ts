@@ -133,6 +133,25 @@ Deno.serve(async (req) => {
       total_records: allMeps.length,
     }).eq("source_type", "eu_parliament");
 
+    // Auto-trigger Wikipedia enrichment for newly created politicians
+    if (created > 0) {
+      try {
+        const enrichUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/enrich-wikipedia`;
+        await fetch(enrichUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({ batchSize: Math.min(created, 15) }),
+          signal: AbortSignal.timeout(25000),
+        });
+        console.log(`Triggered Wikipedia enrichment for ${created} new politicians`);
+      } catch (e) {
+        console.log("Wikipedia enrichment trigger failed (non-blocking):", e);
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       total_meps: allMeps.length,
@@ -141,6 +160,7 @@ Deno.serve(async (req) => {
       updated,
       next_offset: hasMore ? offset + batchSize : null,
       has_more: hasMore,
+      enrichment_triggered: created > 0,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error) {

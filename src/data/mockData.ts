@@ -115,6 +115,12 @@ export interface Actor {
   twitterHandle?: string;
   netWorth?: string;
   topDonors?: string[];
+  wikipediaUrl?: string;
+  wikipediaSummary?: string;
+  biography?: string;
+  wikipediaImageUrl?: string;
+  wikipediaData?: Record<string, any>;
+  enrichedAt?: string;
 }
 
 export interface Proposal {
