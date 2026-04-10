@@ -63,10 +63,12 @@ Deno.serve(async (req) => {
       if (id) mepIds.push(id);
     }
 
-    console.log(`Processing ${mepIds.length} MEP IDs in batches of ${batchSize}`);
+    // Apply offset/limit pagination
+    const paginatedIds = mepIds.slice(offset, offset + limit);
+    console.log(`Processing MEPs ${offset}-${offset + paginatedIds.length} of ${mepIds.length} (batch size ${batchSize})`);
 
-    for (let i = 0; i < Math.min(mepIds.length, 100); i += batchSize) {
-      const batch = mepIds.slice(i, i + batchSize);
+    for (let i = 0; i < paginatedIds.length; i += batchSize) {
+      const batch = paginatedIds.slice(i, i + batchSize);
 
       const results = await Promise.all(
         batch.map(async (mepId) => {
