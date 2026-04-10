@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         const userParams = { "user.fields": "id,name,username,description" };
         const userQueryString = new URLSearchParams(userParams).toString();
 
-        const userAuthHeader = generateOAuthHeader(
+        const userAuthHeader = await generateOAuthHeader(
           "GET", userUrl, userParams,
           consumerKey, consumerSecret, accessToken, accessTokenSecret
         );
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
         };
         const tweetsQueryString = new URLSearchParams(tweetsParams).toString();
 
-        const tweetsAuthHeader = generateOAuthHeader(
+        const tweetsAuthHeader = await generateOAuthHeader(
           "GET", tweetsUrl, tweetsParams,
           consumerKey, consumerSecret, accessToken, accessTokenSecret
         );
