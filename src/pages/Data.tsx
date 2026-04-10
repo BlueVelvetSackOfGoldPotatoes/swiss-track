@@ -707,13 +707,13 @@ const Data = () => {
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">POLITICIANS PER COUNTRY</h2>
           <div className="brutalist-border bg-card p-4">
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={stats.byCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
-                onClick={(d) => handleBarClick(d, 'Politicians per Country')}>
+              <BarChart data={stats.byCountry} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="code" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip content={<RichBarTooltip totalValue={stats.totalPoliticians} totalLabel="Total Politicians" />} />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} className="cursor-pointer" />
+                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} className="cursor-pointer"
+                  onClick={(d, i) => handleBarClick(d, i, 'Politicians per Country')} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -726,13 +726,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Political representation density — smaller countries have higher ratios</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={stats.perCapita} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
-                  onClick={(d) => handleBarClick(d, 'Per Capita Representation')}>
+                <BarChart data={stats.perCapita} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip content={<RichBarTooltip />} />
-                  <Bar dataKey="perMillion" fill="hsl(150, 40%, 40%)" radius={[2, 2, 0, 0]} className="cursor-pointer" />
+                  <Bar dataKey="perMillion" fill="hsl(150, 40%, 40%)" radius={[2, 2, 0, 0]} className="cursor-pointer"
+                    onClick={(d, i) => handleBarClick(d, i, 'Per Capita Representation')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -743,13 +743,13 @@ const Data = () => {
             <p className="text-xs font-mono text-muted-foreground mb-4">Political density relative to economic output</p>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={stats.perGdp} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
-                  onClick={(d) => handleBarClick(d, 'Per GDP Representation')}>
+                <BarChart data={stats.perGdp} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip content={<RichBarTooltip />} />
-                  <Bar dataKey="perBillion" fill="hsl(45, 70%, 50%)" radius={[2, 2, 0, 0]} className="cursor-pointer" />
+                  <Bar dataKey="perBillion" fill="hsl(45, 70%, 50%)" radius={[2, 2, 0, 0]} className="cursor-pointer"
+                    onClick={(d, i) => handleBarClick(d, i, 'Per GDP Representation')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -769,7 +769,7 @@ const Data = () => {
                 <ZAxis type="number" dataKey="population" range={[40, 400]} />
                 <Tooltip content={<RichScatterTooltip />} />
                 <Scatter data={stats.scatterData} fill="hsl(var(--primary))" fillOpacity={0.7} stroke="hsl(var(--primary))" strokeWidth={1} className="cursor-pointer"
-                  onClick={(d: any) => handleBarClick(d, 'Country Detail')} />
+                  onClick={(d: any) => handleBarClick(d, 0, 'Country Detail')} />
               </ScatterChart>
             </ResponsiveContainer>
           </div>
@@ -781,13 +781,13 @@ const Data = () => {
           <p className="text-xs font-mono text-muted-foreground mb-4">Economic output per politician — higher means fewer politicians relative to GDP</p>
           <div className="brutalist-border bg-card p-4">
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={stats.gdpPerPol} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}
-                onClick={(d) => handleBarClick(d, 'GDP per Politician')}>
+              <BarChart data={stats.gdpPerPol} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip content={<RichBarTooltip />} />
-                <Bar dataKey="gdpPerPolitician" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} className="cursor-pointer" />
+                <Bar dataKey="gdpPerPolitician" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} className="cursor-pointer"
+                  onClick={(d, i) => handleBarClick(d, i, 'GDP per Politician')} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -834,13 +834,13 @@ const Data = () => {
             <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">EP POLITICAL GROUPS</h2>
             <div className="brutalist-border bg-card p-4">
               <ResponsiveContainer width="100%" height={380}>
-                <BarChart data={stats.byGroup} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}
-                  onClick={(d) => handleBarClick(d, 'EP Group')}>
+                <BarChart data={stats.byGroup} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={80} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip content={<RichBarTooltip totalValue={stats.totalPoliticians} totalLabel="Total Politicians" />} />
-                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[0, 2, 2, 0]} className="cursor-pointer" />
+                  <Bar dataKey="count" fill="hsl(var(--accent))" radius={[0, 2, 2, 0]} className="cursor-pointer"
+                    onClick={(d, i) => handleBarClick(d, i, 'EP Group')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -904,7 +904,7 @@ const Data = () => {
                       const perM = ref ? ((c.count / ref.population) * 1_000_000).toFixed(1) : '—';
                       return (
                         <tr key={i} className="border-b border-border/50 hover:bg-muted/50 cursor-pointer"
-                          onClick={() => handleBarClick({ ...c, fullName: c.name }, 'Country Detail')}>
+                          onClick={() => handleBarClick({ ...c, fullName: c.name }, 0, 'Country Detail')}>
                           <td className="p-2">{c.code} {c.name}</td>
                           <td className="p-2 text-right font-bold">{c.count}</td>
                           <td className="p-2 text-right text-muted-foreground">{perM}</td>
