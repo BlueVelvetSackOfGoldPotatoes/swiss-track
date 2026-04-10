@@ -668,10 +668,128 @@ const Data = () => {
           </div>
         </section>
 
+        {/* === FINANCIAL TRANSPARENCY SECTION === */}
+        <div className="brutalist-border-b pb-2 mt-4">
+          <h2 className="text-xl font-extrabold tracking-tighter font-mono">💰 FINANCIAL TRANSPARENCY</h2>
+          <p className="text-xs font-mono text-muted-foreground mt-1">
+            Salary, investments, and financial interests across {stats.totalPoliticians} politicians
+          </p>
+        </div>
+
+        {/* Financial summary cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Total Investment Value" value={`€${(stats.totalInvestmentValue / 1_000_000).toFixed(1)}M`} />
+          <StatCard label="Disclosed Investments" value={stats.totalInvestments} sub={`${stats.politiciansWithInvestments} politicians`} />
+          <StatCard label="With Side Income" value={`${stats.sideIncomePct}%`} sub={`${stats.sideIncomeCount} politicians`} />
+          <StatCard label="Investment Sectors" value={stats.bySector.length} />
+        </div>
+
+        {/* Salary distribution + Avg salary by source */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">SALARY DISTRIBUTION</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">How politician salaries are distributed across income brackets</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={stats.salaryDistribution} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">AVERAGE SALARY BY SOURCE</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">EP Parliament vs National Government compensation</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={stats.avgSalaryBySource} layout="vertical" margin={{ top: 5, right: 20, left: 120, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontFamily: 'monospace' }} width={120} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip formatter={(v: number) => `€${v.toLocaleString()}`} />
+                  <Bar dataKey="avgSalary" fill="hsl(150, 40%, 40%)" radius={[0, 2, 2, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </div>
+
+        {/* Investment by sector + Top companies */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">INVESTMENT BY SECTOR</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Where politicians put their money — total disclosed value per sector</p>
+            <div className="brutalist-border bg-card p-4">
+              <ResponsiveContainer width="100%" height={350}>
+                <PieChart>
+                  <Pie data={stats.bySector} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={130} innerRadius={50}>
+                    {stats.bySector.map((_: any, i: number) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => `€${(v / 1000).toFixed(0)}K`} />
+                  <Legend formatter={(v: string) => <span className="text-xs font-mono">{v}</span>} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">MOST POPULAR INVESTMENTS</h2>
+            <p className="text-xs font-mono text-muted-foreground mb-4">Companies with the most politician-investors</p>
+            <div className="brutalist-border bg-card overflow-hidden">
+              <div className="max-h-[390px] overflow-y-auto">
+                <table className="w-full text-xs font-mono">
+                  <thead className="sticky top-0 bg-card">
+                    <tr className="border-b border-border">
+                      <th className="text-left p-2 font-bold">COMPANY</th>
+                      <th className="text-left p-2 font-bold">SECTOR</th>
+                      <th className="text-right p-2 font-bold">INVESTORS</th>
+                      <th className="text-right p-2 font-bold">TOTAL VALUE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.topCompanies.map((c: any, i: number) => (
+                      <tr key={i} className="border-b border-border/50 hover:bg-muted/50">
+                        <td className="p-2 font-medium">{c.name}</td>
+                        <td className="p-2"><span className="px-1.5 py-0.5 rounded text-[10px] bg-muted">{c.sector}</span></td>
+                        <td className="p-2 text-right font-bold">{c.investors}</td>
+                        <td className="p-2 text-right text-muted-foreground">€{(c.value / 1000).toFixed(0)}K</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Sector holdings bar chart */}
+        <section>
+          <h2 className="text-lg font-extrabold tracking-tight mb-1 font-mono">HOLDINGS PER SECTOR</h2>
+          <p className="text-xs font-mono text-muted-foreground mb-4">Number of individual investment positions by sector</p>
+          <div className="brutalist-border bg-card p-4">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={stats.bySector} margin={{ top: 5, right: 5, left: 5, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" angle={-30} textAnchor="end" interval={0} tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" fill="hsl(280, 30%, 50%)" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
         {/* Data Sources */}
         <section>
           <h2 className="text-lg font-extrabold tracking-tight mb-4 font-mono">DATA SOURCES</h2>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid sm:grid-cols-4 gap-3">
             <div className="brutalist-border p-4 bg-card">
               <div className="text-sm font-bold">European Parliament</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">718 MEPs · XML directory</div>
@@ -683,9 +801,14 @@ const Data = () => {
               <div className="text-xs text-accent mt-2">en.wikipedia.org</div>
             </div>
             <div className="brutalist-border p-4 bg-card">
+              <div className="text-sm font-bold">Financial Disclosures</div>
+              <div className="text-xs font-mono text-muted-foreground mt-1">{stats.totalInvestments} positions tracked</div>
+              <div className="text-xs text-accent mt-2">Declarations of interest</div>
+            </div>
+            <div className="brutalist-border p-4 bg-card">
               <div className="text-sm font-bold">Public RSS Feeds</div>
               <div className="text-xs font-mono text-muted-foreground mt-1">{stats.totalEvents} events · EU sources</div>
-              <div className="text-xs text-accent mt-2">ec.europa.eu · consilium.europa.eu</div>
+              <div className="text-xs text-accent mt-2">ec.europa.eu</div>
             </div>
           </div>
         </section>
