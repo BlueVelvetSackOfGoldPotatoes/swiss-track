@@ -4,6 +4,7 @@ import SiteFooter from '@/components/SiteFooter';
 import ActorTimeline from '@/components/ActorTimeline';
 import ActorCharts from '@/components/ActorCharts';
 import { usePolitician, usePoliticianEvents } from '@/hooks/use-politicians';
+import { ExternalLink } from 'lucide-react';
 
 const ActorDetail = () => {
   const { id } = useParams();
@@ -35,9 +36,7 @@ const ActorDetail = () => {
     );
   }
 
-  const yearsInOffice = actor.inOfficeSince
-    ? Math.floor((Date.now() - new Date(actor.inOfficeSince).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-    : null;
+  const infobox = actor.wikipediaData?.infobox as Record<string, string> | undefined;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -45,18 +44,58 @@ const ActorDetail = () => {
       <main className="container flex-1 py-8 max-w-4xl">
         <Link to="/actors" className="text-accent underline text-xs font-mono mb-4 inline-block">← ACTORS</Link>
 
+        {/* Header with photo */}
         <div className="brutalist-border-b pb-4 mb-6">
-          <div className="flex gap-2 mb-2 flex-wrap">
-            <span className="evidence-tag">{actor.countryId.toUpperCase()}</span>
-            <span className="evidence-tag">{actor.party}</span>
-            <span className="evidence-tag">{actor.jurisdiction.toUpperCase()}</span>
+          <div className="flex gap-4 items-start">
+            {actor.photoUrl && (
+              <img
+                src={actor.photoUrl}
+                alt={actor.name}
+                className="w-20 h-20 rounded object-cover brutalist-border flex-shrink-0"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+            <div className="flex-1">
+              <div className="flex gap-2 mb-2 flex-wrap">
+                <span className="evidence-tag">{actor.countryId.toUpperCase()}</span>
+                <span className="evidence-tag">{actor.party}</span>
+                <span className="evidence-tag">{actor.jurisdiction.toUpperCase()}</span>
+              </div>
+              <h1 className="text-2xl font-extrabold tracking-tight">{actor.name}</h1>
+              <p className="text-sm font-mono text-muted-foreground">{actor.role} · {actor.canton}</p>
+              {actor.wikipediaData?.description && (
+                <p className="text-xs text-muted-foreground mt-1 italic">{actor.wikipediaData.description}</p>
+              )}
+            </div>
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight">{actor.name}</h1>
-          <p className="text-sm font-mono text-muted-foreground">{actor.role} · {actor.canton}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
           <div>
+            {/* Wikipedia biography */}
+            {actor.wikipediaSummary && (
+              <section className="mb-8">
+                <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-blue-500" />
+                  BIOGRAPHY
+                </h2>
+                <div className="brutalist-border p-4 bg-secondary/30">
+                  <p className="text-sm leading-relaxed">{actor.wikipediaSummary}</p>
+                  {actor.wikipediaUrl && (
+                    <a
+                      href={actor.wikipediaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-mono text-accent hover:underline mt-3"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Read full article on Wikipedia
+                    </a>
+                  )}
+                </div>
+              </section>
+            )}
+
             {events.length > 0 && (
               <>
                 <section className="mb-8">
@@ -77,7 +116,7 @@ const ActorDetail = () => {
               </>
             )}
 
-            {events.length === 0 && (
+            {events.length === 0 && !actor.wikipediaSummary && (
               <div className="brutalist-border p-6 bg-secondary text-center">
                 <p className="font-mono text-sm text-muted-foreground">No events tracked yet for this politician.</p>
                 <p className="font-mono text-xs text-muted-foreground mt-1">Events will appear here once data is scraped.</p>
@@ -86,6 +125,21 @@ const ActorDetail = () => {
           </div>
 
           <aside className="space-y-6">
+            {/* Infobox from Wikipedia */}
+            {infobox && Object.keys(infobox).length > 0 && (
+              <div className="brutalist-border p-4">
+                <h3 className="font-mono text-xs font-bold mb-2">DETAILS</h3>
+                <div className="space-y-1.5">
+                  {Object.entries(infobox).map(([key, val]) => (
+                    <div key={key} className="flex justify-between gap-2 font-mono text-xs">
+                      <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                      <span className="font-medium text-right max-w-[160px] truncate" title={val}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {actor.committees.length > 0 && (
               <div className="brutalist-border p-4">
                 <h3 className="font-mono text-xs font-bold mb-2">COMMITTEES</h3>
@@ -126,6 +180,10 @@ const ActorDetail = () => {
                   <span>Sources</span>
                   <span className="font-bold">{new Set(events.map(e => e.source).filter(Boolean)).size}</span>
                 </div>
+                <div className="flex justify-between font-mono text-xs">
+                  <span>Wikipedia enriched</span>
+                  <span className="font-bold">{actor.enrichedAt ? '✓' : '—'}</span>
+                </div>
               </div>
             </div>
 
@@ -134,6 +192,7 @@ const ActorDetail = () => {
               <div>updated: {new Date(actor.updatedAt).toLocaleDateString()}</div>
               {actor.birthYear && <div>born: {actor.birthYear}</div>}
               {actor.inOfficeSince && <div>in office since: {new Date(actor.inOfficeSince).toLocaleDateString()}</div>}
+              {actor.enrichedAt && <div>enriched: {new Date(actor.enrichedAt).toLocaleDateString()}</div>}
             </div>
           </aside>
         </div>
