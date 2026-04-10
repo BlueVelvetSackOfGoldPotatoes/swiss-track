@@ -1,24 +1,118 @@
+import { useState } from 'react';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import ProposalCard from '@/components/ProposalCard';
-import { mockProposals } from '@/data/mockData';
+import { useProposals, useProposalStats, statusLabels } from '@/hooks/use-proposals';
+
+const POLICY_AREAS = ['all', 'technology', 'environment', 'finance', 'justice', 'economy', 'healthcare', 'social_welfare', 'defense', 'energy', 'governance'];
 
 const Proposals = () => {
+  const [countryFilter, setCountryFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [areaFilter, setAreaFilter] = useState<string>('');
+
+  const filters = {
+    countryCode: countryFilter || undefined,
+    status: statusFilter || undefined,
+    policyArea: areaFilter || undefined,
+  };
+
+  const { data: proposals = [], isLoading } = useProposals(filters);
+  const { data: stats } = useProposalStats();
+
+  const countries = stats?.byCountry || [];
+
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
       <main className="container flex-1 py-8">
         <div className="brutalist-border-b pb-2 mb-6">
-          <h2 className="text-lg font-extrabold tracking-tight">ALL PROPOSALS</h2>
+          <h2 className="text-lg font-extrabold tracking-tight">LEGISLATIVE TRACKER</h2>
           <p className="text-xs font-mono text-muted-foreground mt-1">
-            Federal initiatives, referendums, counter-proposals, and bills.
+            EU directives, national bills, referendums, and reforms across {stats?.total || 0} proposals in {countries.length} jurisdictions.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {mockProposals.map((p) => (
-            <ProposalCard key={p.id} proposal={p} />
-          ))}
+
+        {/* Stats row */}
+        {stats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="brutalist-border p-3 bg-card">
+              <div className="font-mono text-2xl font-bold">{stats.total}</div>
+              <div className="text-[10px] font-mono text-muted-foreground uppercase">Total Proposals</div>
+            </div>
+            <div className="brutalist-border p-3 bg-card">
+              <div className="font-mono text-2xl font-bold">{stats.byStatus.find(s => s.name === 'adopted')?.count || 0}</div>
+              <div className="text-[10px] font-mono text-muted-foreground uppercase">Adopted</div>
+            </div>
+            <div className="brutalist-border p-3 bg-card">
+              <div className="font-mono text-2xl font-bold">{stats.byCountry.length}</div>
+              <div className="text-[10px] font-mono text-muted-foreground uppercase">Countries</div>
+            </div>
+            <div className="brutalist-border p-3 bg-card">
+              <div className="font-mono text-2xl font-bold">{stats.byArea.length}</div>
+              <div className="text-[10px] font-mono text-muted-foreground uppercase">Policy Areas</div>
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 mb-6">
+          <select
+            value={countryFilter}
+            onChange={e => setCountryFilter(e.target.value)}
+            className="brutalist-border px-3 py-1.5 text-xs font-mono bg-card"
+          >
+            <option value="">All Countries</option>
+            {countries.map(c => (
+              <option key={c.code} value={c.code}>{c.code} · {c.name} ({c.count})</option>
+            ))}
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="brutalist-border px-3 py-1.5 text-xs font-mono bg-card"
+          >
+            <option value="">All Statuses</option>
+            {Object.entries(statusLabels).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
+
+          <select
+            value={areaFilter}
+            onChange={e => setAreaFilter(e.target.value)}
+            className="brutalist-border px-3 py-1.5 text-xs font-mono bg-card"
+          >
+            <option value="">All Policy Areas</option>
+            {POLICY_AREAS.filter(a => a !== 'all').map(a => (
+              <option key={a} value={a}>{a.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
+            ))}
+          </select>
+
+          {(countryFilter || statusFilter || areaFilter) && (
+            <button
+              onClick={() => { setCountryFilter(''); setStatusFilter(''); setAreaFilter(''); }}
+              className="text-xs font-mono text-accent hover:underline"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
+
+        {isLoading ? (
+          <div className="font-mono text-sm text-muted-foreground">Loading proposals...</div>
+        ) : proposals.length === 0 ? (
+          <div className="brutalist-border p-6 text-center">
+            <p className="font-mono text-sm text-muted-foreground">No proposals match the current filters.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {proposals.map((p) => (
+              <ProposalCard key={p.id} proposal={p} />
+            ))}
+          </div>
+        )}
       </main>
       <SiteFooter />
     </div>
