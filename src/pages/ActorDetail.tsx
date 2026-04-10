@@ -3,11 +3,12 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import ActorTimeline from '@/components/ActorTimeline';
 import ActorCharts from '@/components/ActorCharts';
-import { usePolitician, usePoliticianEvents, usePoliticianFinances, usePoliticianInvestments, usePoliticianPosition, useAllPositions } from '@/hooks/use-politicians';
-import { ExternalLink, TrendingUp, Building2, Briefcase, DollarSign, Compass } from 'lucide-react';
+import { usePolitician, usePoliticianEvents, usePoliticianFinances, usePoliticianInvestments, usePoliticianPosition, useAllPositions, usePoliticianAssociates } from '@/hooks/use-politicians';
+import { ExternalLink, TrendingUp, Building2, Briefcase, DollarSign, Compass, Users, Globe, Handshake } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { PoliticalCompassChart, IdeologyLegend } from '@/components/PoliticalCompass';
 import { PolicyRadarChart, PoliticalAxesBar, KeyPositionsList } from '@/components/PolicyRadar';
+import { Link as RouterLink } from 'react-router-dom';
 
 const SECTOR_COLORS: Record<string, string> = {
   Technology: 'hsl(215, 30%, 45%)',
@@ -32,6 +33,7 @@ const ActorDetail = () => {
   const { data: investments = [] } = usePoliticianInvestments(id);
   const { data: position } = usePoliticianPosition(id);
   const { data: allPositions = [] } = useAllPositions();
+  const { data: associates = [] } = usePoliticianAssociates(id);
 
   if (isLoading) {
     return (
@@ -168,6 +170,94 @@ const ActorDetail = () => {
                 )}
 
                 <IdeologyLegend />
+              </section>
+            )}
+
+            {/* Close Associates Network */}
+            {associates.length > 0 && (
+              <section className="mb-8">
+                <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                  <Users className="w-3 h-3" />
+                  CLOSE ASSOCIATES · {associates.length} connections
+                </h2>
+
+                {/* Group by type */}
+                {(() => {
+                  const domestic = associates.filter(a => a.is_domestic);
+                  const international = associates.filter(a => !a.is_domestic);
+                  const typeIcon = (type: string) => {
+                    switch (type) {
+                      case 'party_ally': return '🤝';
+                      case 'coalition_partner': return '🏛️';
+                      case 'committee_peer': return '📋';
+                      case 'international_ally': return '🌍';
+                      case 'mentor': return '🎓';
+                      case 'rival': return '⚔️';
+                      default: return '🔗';
+                    }
+                  };
+                  const typeLabel = (type: string) => type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+                  const renderAssociate = (a: typeof associates[0]) => (
+                    <RouterLink
+                      key={a.id}
+                      to={`/actors/${a.associate_id}`}
+                      className="flex items-center gap-2.5 p-2 rounded hover:bg-muted/50 transition-colors group"
+                    >
+                      {a.photo_url ? (
+                        <img src={a.photo_url} alt={a.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {a.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium group-hover:text-primary truncate">{a.name}</div>
+                        <div className="text-[10px] font-mono text-muted-foreground truncate">
+                          {a.party && <span className="mr-1">{a.party}</span>}
+                          <span>{a.country_code}</span>
+                          {a.role && <span className="ml-1">· {a.role.slice(0, 30)}</span>}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-muted">{typeIcon(a.relationship_type)} {typeLabel(a.relationship_type)}</span>
+                        <div className="flex items-center gap-1">
+                          <div className="w-12 h-1 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-primary rounded-full" style={{ width: `${(a.strength / 10) * 100}%` }} />
+                          </div>
+                          <span className="text-[9px] font-mono text-muted-foreground">{a.strength}</span>
+                        </div>
+                      </div>
+                    </RouterLink>
+                  );
+
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {domestic.length > 0 && (
+                        <div className="brutalist-border bg-card p-3">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Handshake className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-[10px] font-mono font-bold text-muted-foreground">DOMESTIC ({domestic.length})</span>
+                          </div>
+                          <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
+                            {domestic.map(renderAssociate)}
+                          </div>
+                        </div>
+                      )}
+                      {international.length > 0 && (
+                        <div className="brutalist-border bg-card p-3">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Globe className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-[10px] font-mono font-bold text-muted-foreground">INTERNATIONAL ({international.length})</span>
+                          </div>
+                          <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
+                            {international.map(renderAssociate)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </section>
             )}
 

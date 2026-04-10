@@ -198,6 +198,92 @@ export function useAllPositions() {
   });
 }
 
+export interface PoliticianAssociate {
+  id: string;
+  associate_id: string;
+  relationship_type: string;
+  strength: number;
+  context: string | null;
+  is_domestic: boolean;
+  name: string;
+  party: string | null;
+  country_code: string;
+  country_name: string;
+  photo_url: string | null;
+  role: string | null;
+}
+
+export function usePoliticianAssociates(politicianId: string | undefined) {
+  return useQuery({
+    queryKey: ['politician-associates', politicianId],
+    queryFn: async () => {
+      if (!politicianId) return [];
+      // Get associations where this politician is either side
+      const [{ data: d1, error: e1 }, { data: d2, error: e2 }] = await Promise.all([
+        supabase
+          .from('politician_associations')
+          .select('id, associate_id, relationship_type, strength, context, is_domestic, politicians!politician_associations_associate_id_fkey(name, party_abbreviation, country_code, country_name, photo_url, role)')
+          .eq('politician_id', politicianId)
+          .order('strength', { ascending: false })
+          .limit(20),
+        supabase
+          .from('politician_associations')
+          .select('id, politician_id, relationship_type, strength, context, is_domestic, politicians!politician_associations_politician_id_fkey(name, party_abbreviation, country_code, country_name, photo_url, role)')
+          .eq('associate_id', politicianId)
+          .order('strength', { ascending: false })
+          .limit(20),
+      ]);
+      if (e1) throw e1;
+      if (e2) throw e2;
+
+      const seen = new Set<string>();
+      const results: PoliticianAssociate[] = [];
+
+      for (const r of d1 || []) {
+        const p = (r as any).politicians;
+        if (!p || seen.has(r.associate_id)) continue;
+        seen.add(r.associate_id);
+        results.push({
+          id: r.id,
+          associate_id: r.associate_id,
+          relationship_type: r.relationship_type,
+          strength: Number(r.strength),
+          context: r.context,
+          is_domestic: r.is_domestic,
+          name: p.name,
+          party: p.party_abbreviation,
+          country_code: p.country_code,
+          country_name: p.country_name,
+          photo_url: p.photo_url,
+          role: p.role,
+        });
+      }
+      for (const r of d2 || []) {
+        const p = (r as any).politicians;
+        if (!p || seen.has(r.politician_id)) continue;
+        seen.add(r.politician_id);
+        results.push({
+          id: r.id,
+          associate_id: r.politician_id,
+          relationship_type: r.relationship_type,
+          strength: Number(r.strength),
+          context: r.context,
+          is_domestic: r.is_domestic,
+          name: p.name,
+          party: p.party_abbreviation,
+          country_code: p.country_code,
+          country_name: p.country_name,
+          photo_url: p.photo_url,
+          role: p.role,
+        });
+      }
+
+      return results.sort((a, b) => b.strength - a.strength).slice(0, 20);
+    },
+    enabled: !!politicianId,
+  });
+}
+
 export function usePoliticiansByCountry(countryCode: string | undefined) {
   return useQuery({
     queryKey: ['politicians-by-country', countryCode],
