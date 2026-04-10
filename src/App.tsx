@@ -12,6 +12,7 @@ import Explore from "./pages/Explore.tsx";
 import CountryDetail from "./pages/CountryDetail.tsx";
 import Relationships from "./pages/Relationships.tsx";
 import About from "./pages/About.tsx";
+import Data from "./pages/Data.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/actors" element={<Actors />} />
           <Route path="/actors/:id" element={<ActorDetail />} />
           <Route path="/relationships" element={<Relationships />} />
+          <Route path="/data" element={<Data />} />
           <Route path="/about" element={<About />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
