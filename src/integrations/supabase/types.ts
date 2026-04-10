@@ -118,6 +118,54 @@ export type Database = {
           },
         ]
       }
+      politician_associations: {
+        Row: {
+          associate_id: string
+          context: string | null
+          created_at: string
+          id: string
+          is_domestic: boolean
+          politician_id: string
+          relationship_type: string
+          strength: number
+        }
+        Insert: {
+          associate_id: string
+          context?: string | null
+          created_at?: string
+          id?: string
+          is_domestic?: boolean
+          politician_id: string
+          relationship_type?: string
+          strength?: number
+        }
+        Update: {
+          associate_id?: string
+          context?: string | null
+          created_at?: string
+          id?: string
+          is_domestic?: boolean
+          politician_id?: string
+          relationship_type?: string
+          strength?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "politician_associations_associate_id_fkey"
+            columns: ["associate_id"]
+            isOneToOne: false
+            referencedRelation: "politicians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "politician_associations_politician_id_fkey"
+            columns: ["politician_id"]
+            isOneToOne: false
+            referencedRelation: "politicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       politician_finances: {
         Row: {
           annual_salary: number | null
