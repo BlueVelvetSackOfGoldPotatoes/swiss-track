@@ -190,6 +190,7 @@ const ActorDetail = () => {
                       highlightId={id}
                       height={250}
                     />
+                    <IdeologyLegend />
                     <ProvenanceBar sources={[
                       { label: 'Chapel Hill Expert Survey', url: 'https://www.chesdata.eu/', type: 'model' },
                       { label: 'Party family mapping', type: 'estimate' },
@@ -241,7 +242,6 @@ const ActorDetail = () => {
                   </div>
                 )}
 
-                <IdeologyLegend />
               </section>
             )}
 
