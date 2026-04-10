@@ -3,11 +3,12 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import ActorTimeline from '@/components/ActorTimeline';
 import ActorCharts from '@/components/ActorCharts';
-import { usePolitician, usePoliticianEvents, usePoliticianFinances, usePoliticianInvestments, usePoliticianPosition, useAllPositions } from '@/hooks/use-politicians';
-import { ExternalLink, TrendingUp, Building2, Briefcase, DollarSign, Compass } from 'lucide-react';
+import { usePolitician, usePoliticianEvents, usePoliticianFinances, usePoliticianInvestments, usePoliticianPosition, useAllPositions, usePoliticianAssociates } from '@/hooks/use-politicians';
+import { ExternalLink, TrendingUp, Building2, Briefcase, DollarSign, Compass, Users, Globe, Handshake } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { PoliticalCompassChart, IdeologyLegend } from '@/components/PoliticalCompass';
 import { PolicyRadarChart, PoliticalAxesBar, KeyPositionsList } from '@/components/PolicyRadar';
+import { Link as RouterLink } from 'react-router-dom';
 
 const SECTOR_COLORS: Record<string, string> = {
   Technology: 'hsl(215, 30%, 45%)',
