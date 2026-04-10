@@ -125,6 +125,52 @@ const ActorDetail = () => {
               </section>
             )}
 
+            {/* Political Orientation */}
+            {position && (
+              <section className="mb-8">
+                <h2 className="text-xs font-mono font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                  <Compass className="w-3 h-3" />
+                  POLITICAL ORIENTATION
+                  {position.ideology_label && (
+                    <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px]">{position.ideology_label}</span>
+                  )}
+                </h2>
+
+                {/* Political Axes */}
+                <div className="brutalist-border p-4 bg-secondary/30 mb-4">
+                  <PoliticalAxesBar position={position as any} />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  {/* Policy Radar */}
+                  <div className="brutalist-border p-3 bg-card">
+                    <p className="text-[10px] font-mono font-bold text-muted-foreground text-center mb-1">POLICY PRIORITIES</p>
+                    <PolicyRadarChart position={position as any} height={250} />
+                  </div>
+
+                  {/* Compass position in context */}
+                  <div className="brutalist-border p-3 bg-card">
+                    <p className="text-[10px] font-mono font-bold text-muted-foreground text-center mb-1">POLITICAL COMPASS</p>
+                    <PoliticalCompassChart
+                      positions={allPositions}
+                      highlightId={id}
+                      height={250}
+                    />
+                  </div>
+                </div>
+
+                {/* Key policy positions */}
+                {position.key_positions && Object.keys(position.key_positions).length > 0 && (
+                  <div className="brutalist-border p-4 bg-card">
+                    <p className="text-[10px] font-mono font-bold text-muted-foreground mb-2">KEY POLICY STANCES</p>
+                    <KeyPositionsList positions={position.key_positions as Record<string, string>} />
+                  </div>
+                )}
+
+                <IdeologyLegend />
+              </section>
+            )}
+
             {/* Financial Overview */}
             {finances && (
               <section className="mb-8">
