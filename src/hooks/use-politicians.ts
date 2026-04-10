@@ -163,6 +163,41 @@ export function usePoliticianEvents(politicianId: string | undefined) {
   });
 }
 
+export function usePoliticianPosition(politicianId: string | undefined) {
+  return useQuery({
+    queryKey: ['politician-position', politicianId],
+    queryFn: async () => {
+      if (!politicianId) return null;
+      const { data, error } = await supabase
+        .from('politician_positions')
+        .select('*')
+        .eq('politician_id', politicianId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!politicianId,
+  });
+}
+
+export function useAllPositions() {
+  return useQuery({
+    queryKey: ['all-positions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('politician_positions')
+        .select('*, politicians!inner(name, party_abbreviation, country_code)');
+      if (error) throw error;
+      return (data || []).map((d: any) => ({
+        ...d,
+        name: d.politicians?.name,
+        party: d.politicians?.party_abbreviation,
+        country: d.politicians?.country_code,
+      }));
+    },
+  });
+}
+
 export function usePoliticiansByCountry(countryCode: string | undefined) {
   return useQuery({
     queryKey: ['politicians-by-country', countryCode],

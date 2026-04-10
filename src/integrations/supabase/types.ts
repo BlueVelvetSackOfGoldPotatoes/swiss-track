@@ -224,6 +224,83 @@ export type Database = {
           },
         ]
       }
+      politician_positions: {
+        Row: {
+          created_at: string
+          data_source: string | null
+          defense_priority: number | null
+          economic_score: number | null
+          economy_priority: number | null
+          education_priority: number | null
+          environment_priority: number | null
+          environmental_score: number | null
+          eu_integration_score: number | null
+          healthcare_priority: number | null
+          id: string
+          ideology_label: string | null
+          immigration_score: number | null
+          justice_priority: number | null
+          key_positions: Json | null
+          politician_id: string
+          science_priority: number | null
+          social_score: number | null
+          social_welfare_priority: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_source?: string | null
+          defense_priority?: number | null
+          economic_score?: number | null
+          economy_priority?: number | null
+          education_priority?: number | null
+          environment_priority?: number | null
+          environmental_score?: number | null
+          eu_integration_score?: number | null
+          healthcare_priority?: number | null
+          id?: string
+          ideology_label?: string | null
+          immigration_score?: number | null
+          justice_priority?: number | null
+          key_positions?: Json | null
+          politician_id: string
+          science_priority?: number | null
+          social_score?: number | null
+          social_welfare_priority?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_source?: string | null
+          defense_priority?: number | null
+          economic_score?: number | null
+          economy_priority?: number | null
+          education_priority?: number | null
+          environment_priority?: number | null
+          environmental_score?: number | null
+          eu_integration_score?: number | null
+          healthcare_priority?: number | null
+          id?: string
+          ideology_label?: string | null
+          immigration_score?: number | null
+          justice_priority?: number | null
+          key_positions?: Json | null
+          politician_id?: string
+          science_priority?: number | null
+          social_score?: number | null
+          social_welfare_priority?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "politician_positions_politician_id_fkey"
+            columns: ["politician_id"]
+            isOneToOne: true
+            referencedRelation: "politicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       politicians: {
         Row: {
           biography: string | null
